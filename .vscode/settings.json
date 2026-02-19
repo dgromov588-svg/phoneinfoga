@@ -1,0 +1,14 @@
+{
+    "dbcode.connections": [
+        {
+            "connectionId": "D4i2gq42D0M9mMg9wyVLH",
+            "name": "Database1",
+            "driver": "excel",
+            "color": "#00A6FF",
+            "socket": "c:\\Users\\test\\Downloads\\База-мобильных-номеров-РФ.xlsx",
+            "readOnly": false,
+            "role": "development",
+            "connectionType": "socket"
+        }
+    ]
+}

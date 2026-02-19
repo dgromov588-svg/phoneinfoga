@@ -98,10 +98,15 @@ def cmd_directory_stats(args: argparse.Namespace) -> int:
 
 def cmd_telegram_bot(args: argparse.Namespace) -> int:
     _ = args
-    from telegram_bot import run
+    from telegram_bot import run_sync
 
-    asyncio.run(run())
-    return 0
+    try:
+        run_sync()
+        return 0
+    except SystemExit as exc:
+        if isinstance(exc.code, int):
+            return exc.code
+        return 1
 
 
 def build_parser() -> argparse.ArgumentParser:

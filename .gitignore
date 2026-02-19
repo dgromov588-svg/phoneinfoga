@@ -1,23 +1,63 @@
-# Binaries for programs and plugins
+# Sync .project/sourceTexts/ folder (source text files)
+
+# Don't sync user-specific SQLite databases
+.project/*.sqlite
+
+# Don't sync SQLite auxiliary files
+.project/*.sqlite-wal
+.project/*.sqlite-shm
+
+# Don't sync user-specific files
+.project/complete_drafts.txt
+.project/localProjectSettings.json
+.project/localProjectSwap.json
+copilot-messages.log
+
+# Archive formats
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.gz
+*.bz2
+*.xz
+
+# Windows executables and installers
 *.exe
-*.exe~
+*.msi
+*.bat
+*.cmd
+*.com
+*.scr
 *.dll
-*.so
-*.dylib
-/bin
 
-# Test binary, built with `go test -c`
-*.test
+# macOS executables and disk images
+*.dmg
+*.pkg
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# Disk images and virtual machine files
+*.iso
+*.img
+*.vhd
+*.vmdk
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
-.vscode/
-
+# System files
 .DS_Store
-coverage
-coverage.*
-unit-tests.xml
-.idea
+.project/attachments/files/**
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Common local key files (some upstream tools use these names)
+api.txt
+api_keys.txt
+*_api.txt
+*_keys.txt
+
+# Local business directory database (PII)
+business_directory.db

@@ -1,0 +1,71 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "echo-test",
+			"type": "shell",
+			"command": "echo TASK_OK",
+			"isBackground": false
+		},
+		{
+			"label": "git-status-short",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "check-core-files",
+			"type": "shell",
+			"command": "git ls-files telegram_bot.py osint_cli.py requirements.txt requirements_enhanced.txt directory_db.py data_breaches.py universal_search_system.py xosint_toolkit.py"
+		},
+		{
+			"label": "git-status-now",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "verify-imports",
+			"type": "shell",
+			"command": "C:/Users/test/Documents/phoneinfoga/.venv/Scripts/python.exe -c \"import universal_search_system, xosint_toolkit, telegram_bot, osint_cli; print('IMPORTS_OK')\""
+		},
+		{
+			"label": "verify-imports-2",
+			"type": "shell",
+			"command": "C:/Users/test/Documents/phoneinfoga/.venv/Scripts/python.exe -c \"import universal_search_system; import xosint_toolkit; import telegram_bot; import osint_cli; print('IMPORTS_OK')\""
+		},
+		{
+			"label": "verify-compile-core",
+			"type": "shell",
+			"command": "C:/Users/test/Documents/phoneinfoga/.venv/Scripts/python.exe -m py_compile universal_search_system.py xosint_toolkit.py telegram_bot.py osint_cli.py"
+		},
+		{
+			"label": "commit-full-python",
+			"type": "shell",
+			"command": "git add universal_search_system.py xosint_toolkit.py templates tests sherlock_report.py test_different_numbers.py test_full_search.py test_real_data.py test_sherlock.py; git commit -m \"Add core Python search modules, templates, and tests for full Telegram integration\"; git push origin master"
+		},
+		{
+			"label": "status-before-commit2",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "check-last-commit",
+			"type": "shell",
+			"command": "git log -1 --oneline"
+		},
+		{
+			"label": "cached-files",
+			"type": "shell",
+			"command": "git diff --cached --name-only"
+		},
+		{
+			"label": "commit-and-push-clean",
+			"type": "shell",
+			"command": "git add fix_phone_format.py import_directory_data.py load_all_data.py perfect_search.py phone_search_system.py phoneinfoga_python.py photo_search_system.py project.inlang pytest.ini sherlock_report.py; git commit -m add_python_modules; git push origin master"
+		},
+		{
+			"label": "final-status",
+			"type": "shell",
+			"command": "git status --short"
+		}
+	]
+}

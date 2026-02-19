@@ -6,10 +6,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import tempfile
+import time
+from pathlib import Path
 from typing import Any, Dict, List, Set
+from urllib.parse import quote, urlencode
 
 from dotenv import load_dotenv
-from telegram import Update
+import requests
+from telegram import KeyboardButton, ReplyKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -27,6 +32,93 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+
+BTN_PHONE = "📞 Поиск номера"
+BTN_PHOTO = "🖼 Поиск по фото"
+BTN_FSSP = "⚖️ ФССП"
+BTN_HELP = "ℹ️ Помощь"
+
+
+def _main_menu() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(BTN_PHONE), KeyboardButton(BTN_PHOTO)],
+            [KeyboardButton(BTN_FSSP), KeyboardButton(BTN_HELP)],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        selective=False,
+    )
+
+
+class SingleInstanceLock:
+    """Cross-platform non-blocking lock to prevent duplicate bot instances."""
+
+    def __init__(self, lock_name: str = "phoneinfoga_telegram_bot.lock"):
+        self.lock_path = Path(tempfile.gettempdir()) / lock_name
+        self._fh = None
+
+    def __enter__(self) -> "SingleInstanceLock":
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.release()
+
+    def acquire(self) -> None:
+        self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+        self._fh = self.lock_path.open("a+", encoding="utf-8")
+
+        # Ensure file has at least one byte for byte-range locking on Windows.
+        self._fh.seek(0, os.SEEK_END)
+        if self._fh.tell() == 0:
+            self._fh.write("0")
+            self._fh.flush()
+
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                self._fh.seek(0)
+                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            self._fh.close()
+            self._fh = None
+            raise RuntimeError("Telegram bot is already running (single-instance lock active).") from exc
+
+        self._fh.seek(0)
+        self._fh.truncate()
+        self._fh.write(f"{os.getpid()}\n")
+        self._fh.flush()
+
+    def release(self) -> None:
+        if not self._fh:
+            return
+
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                self._fh.seek(0)
+                msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self._fh.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
+        finally:
+            self._fh.close()
+            self._fh = None
+
+        try:
+            self.lock_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _parse_allowed_chat_ids(raw: str) -> Set[int]:
@@ -156,6 +248,176 @@ def _format_email_result(payload: Dict[str, Any]) -> str:
     return _compact_lines(lines)
 
 
+def _parse_fssp_input(raw: str) -> Dict[str, str]:
+    """Parse /fssp input: 'Фамилия Имя Отчество;YYYY-MM-DD;77'.
+
+    Birth date and region are optional, but FIO must contain at least 2 words.
+    """
+    parts = [p.strip() for p in (raw or "").split(";")]
+    fio = parts[0] if parts else ""
+    birth_date = parts[1] if len(parts) > 1 and parts[1] else ""
+    region = parts[2] if len(parts) > 2 and parts[2] else "77"
+
+    words = [w for w in fio.split() if w]
+    if len(words) < 2:
+        raise ValueError("Нужны минимум фамилия и имя")
+
+    return {
+        "fio": fio,
+        "lastname": words[0],
+        "firstname": words[1],
+        "secondname": words[2] if len(words) > 2 else "",
+        "birth_date": birth_date,
+        "region": region,
+    }
+
+
+def _fssp_official_search(parsed: Dict[str, str], token: str) -> Dict[str, Any]:
+    """Search FSSP via official task-based API.
+
+    API docs: https://api-ip.fssprus.ru/
+    """
+    base_url = "https://api-ip.fssprus.ru/api/v1.0"
+    params = {
+        "token": token,
+        "region": parsed["region"],
+        "lastname": parsed["lastname"],
+        "firstname": parsed["firstname"],
+    }
+    if parsed.get("secondname"):
+        params["secondname"] = parsed["secondname"]
+
+    birth = parsed.get("birth_date", "")
+    if birth:
+        # API usually expects DD.MM.YYYY; accept YYYY-MM-DD from user.
+        if len(birth) == 10 and birth[4] == "-" and birth[7] == "-":
+            y, m, d = birth.split("-")
+            params["birthdate"] = f"{d}.{m}.{y}"
+        else:
+            params["birthdate"] = birth
+
+    search_url = f"{base_url}/search/physical?{urlencode(params)}"
+    search_resp = requests.get(search_url, timeout=15)
+    if search_resp.status_code != 200:
+        raise RuntimeError(f"FSSP API HTTP {search_resp.status_code}")
+
+    search_data = search_resp.json()
+    task_id = (search_data.get("response") or {}).get("task")
+    if not task_id:
+        return {"raw": search_data, "items": []}
+
+    # Poll result endpoint
+    result_params = {"token": token, "task": task_id}
+    result_url = f"{base_url}/result?{urlencode(result_params)}"
+    last_data: Dict[str, Any] = {}
+    for _ in range(6):
+        r = requests.get(result_url, timeout=15)
+        if r.status_code != 200:
+            raise RuntimeError(f"FSSP result HTTP {r.status_code}")
+        last_data = r.json()
+        status = (last_data.get("response") or {}).get("status")
+        if status == 0:
+            break
+        time.sleep(2)
+
+    result = (last_data.get("response") or {}).get("result") or []
+    return {"raw": last_data, "items": result}
+
+
+def _format_fssp_result(parsed: Dict[str, str], result: Dict[str, Any]) -> str:
+    items = result.get("items") or []
+    lines = [
+        "✅ <b>Проверка ФССП (официальный источник)</b>",
+        f"👤 ФИО: <code>{parsed.get('fio', '—')}</code>",
+        f"🗺 Регион: <code>{parsed.get('region', '—')}</code>",
+        "",
+        f"Найдено производств: <b>{len(items)}</b>",
+    ]
+
+    for i, item in enumerate(items[:5], start=1):
+        lines.append("")
+        lines.append(f"<b>{i}) Производство</b>")
+        lines.append(f"• Номер ИП: <code>{item.get('ip_num') or item.get('ipNumber') or '—'}</code>")
+        lines.append(f"• Статус: {item.get('ip_exec_prist_name') or item.get('status') or '—'}")
+        lines.append(f"• Сумма: {item.get('ip_sum') or item.get('sum') or '—'}")
+        lines.append(f"• Отдел: {item.get('department') or item.get('depart_name') or '—'}")
+
+    if not items:
+        lines.append("По указанным данным записи не найдены или ещё обрабатываются.")
+
+    lines.extend([
+        "",
+        "⚖️ Используйте данные только в законных целях и с соблюдением требований о персональных данных.",
+    ])
+    return _compact_lines(lines)
+
+
+def _build_vk_photo_links(photo_url: str, query_hint: str) -> Dict[str, str]:
+    """Build VK-focused links for photo lookup via search engines."""
+    q = (query_hint or "").strip()
+
+    links = {
+        "vk_people": f"https://vk.com/search?c[section]=people&c[q]={quote(q)}" if q else "https://vk.com/search?c[section]=people",
+        "vk_global": f"https://vk.com/feed?section=search&q={quote(q)}" if q else "https://vk.com/feed?section=search",
+        "google_site_vk": "https://www.google.com/search?q=" + quote(f"site:vk.com {q}".strip()),
+        "yandex_site_vk": "https://yandex.ru/search/?text=" + quote(f"site:vk.com {q}".strip()),
+    }
+
+    if photo_url:
+        links["yandex_reverse_by_url"] = "https://yandex.com/images/search?rpt=imageview&url=" + quote(photo_url, safe="")
+
+    return links
+
+
+def _format_photo_result(photo_result: Dict[str, Any], vk_links: Dict[str, str]) -> str:
+    metadata = _safe_get(photo_result, "results", "metadata", default={})
+    engines = _safe_get(photo_result, "results", "image_search", default={})
+
+    lines = [
+        "✅ <b>Поиск по фото</b>",
+        f"🖼 Файл: <code>{_safe_get(metadata, 'filename')}</code>",
+        f"📐 Размер: {_safe_get(metadata, 'size')}",
+        "",
+        "<b>Интернет reverse image search</b>",
+    ]
+
+    if isinstance(engines, dict) and engines:
+        shown = 0
+        for engine_name in ["google", "yandex", "bing", "tineye", "saucenao", "iqdb"]:
+            data = engines.get(engine_name)
+            if not isinstance(data, dict):
+                continue
+            title = data.get("engine") or engine_name
+            search_url = data.get("search_url") or ""
+            upload_url = data.get("upload_url") or ""
+            lines.append(f"• {title}: {search_url}")
+            if upload_url:
+                lines.append(f"  ↳ upload: {upload_url}")
+            shown += 1
+        if shown == 0:
+            lines.append("• Не удалось получить список движков")
+    else:
+        lines.append("• Нет данных по reverse image search")
+
+    lines.extend([
+        "",
+        "<b>Поиск во ВКонтакте</b>",
+        f"• VK people: {vk_links.get('vk_people', '—')}",
+        f"• VK search: {vk_links.get('vk_global', '—')}",
+        f"• Google site:vk.com: {vk_links.get('google_site_vk', '—')}",
+        f"• Yandex site:vk.com: {vk_links.get('yandex_site_vk', '—')}",
+    ])
+
+    if vk_links.get("yandex_reverse_by_url"):
+        lines.append(f"• Yandex reverse по URL фото: {vk_links['yandex_reverse_by_url']}")
+
+    lines.extend([
+        "",
+        "ℹ️ Для VK чаще всего лучше работают связки: reverse image search + `site:vk.com`.",
+    ])
+    return _compact_lines(lines)
+
+
 def _arg_from_context(context: ContextTypes.DEFAULT_TYPE) -> str:
     return " ".join(context.args).strip() if context.args else ""
 
@@ -170,16 +432,19 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     text = (
         "Привет! Я бот для быстрой проверки телефонных номеров в формате OSINT.\n\n"
+        "Нажимай кнопки ниже или используй команды.\n\n"
         "Команды:\n"
         "• /start — старт\n"
         "• /help — помощь\n"
         "• /search <номер> — проверить номер\n"
         "• /ip <адрес> — информация по IP\n"
         "• /email <адрес> — базовая проверка email\n\n"
+        "• /fssp <ФИО;дата;регион> — проверка ФССП (официальный API)\n\n"
+        "• Отправьте фото — бот даст reverse search по интернету и VK\n\n"
         "Пример: <code>/search +79001234567</code>\n"
         "Также можно просто отправить номер сообщением."
     )
-    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=_main_menu())
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -195,8 +460,11 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• <code>/search +79001234567</code> — проверка телефона\n"
         "• <code>/ip 8.8.8.8</code> — IP lookup\n"
         "• <code>/email test@example.com</code> — проверка email\n\n"
+        "• <code>/fssp Иванов Иван Иванович;1990-01-01;77</code> — ФССП по ФИО\n\n"
+        "• Отправьте фото в чат — бот подготовит ссылки reverse image search и VK-поиска\n\n"
         "Или просто отправьте номер телефона отдельным сообщением.",
         parse_mode=ParseMode.HTML,
+        reply_markup=_main_menu(),
     )
 
 
@@ -267,6 +535,90 @@ async def email_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(_format_email_result(payload), parse_mode=ParseMode.HTML)
 
 
+async def fssp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    allowed_chat_ids: Set[int] = context.application.bot_data.get("allowed_chat_ids", set())
+    if await _deny_if_not_allowed(update, allowed_chat_ids):
+        return
+
+    if not update.message:
+        return
+
+    value = _arg_from_context(context)
+    if not value:
+        await update.message.reply_text(
+            "Формат: <code>/fssp Иванов Иван Иванович;1990-01-01;77</code>\n"
+            "Где: ФИО;дата рождения (опц.);код региона (опц.).",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    token = os.getenv("FSSP_API_TOKEN", "").strip()
+    if not token:
+        await update.message.reply_text(
+            "⚠️ Не задан <code>FSSP_API_TOKEN</code> в .env.\n"
+            "Пока можно проверить вручную на официальном сервисе: https://fssp.gov.ru/iss/ip",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    try:
+        parsed = _parse_fssp_input(value)
+    except ValueError as exc:
+        await update.message.reply_text(f"❌ {exc}", parse_mode=ParseMode.HTML)
+        return
+
+    await update.message.reply_text("⏳ Проверяю ФССП по официальному API...")
+    try:
+        result = _fssp_official_search(parsed, token)
+        await update.message.reply_text(_format_fssp_result(parsed, result), parse_mode=ParseMode.HTML)
+    except (requests.RequestException, RuntimeError, ValueError) as exc:
+        await update.message.reply_text(
+            "❌ Ошибка запроса ФССП API.\n"
+            f"Детали: <code>{str(exc)}</code>\n"
+            "Проверьте токен/формат данных или используйте https://fssp.gov.ru/iss/ip",
+            parse_mode=ParseMode.HTML,
+        )
+
+
+async def photo_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    allowed_chat_ids: Set[int] = context.application.bot_data.get("allowed_chat_ids", set())
+    if await _deny_if_not_allowed(update, allowed_chat_ids):
+        return
+
+    if not update.message or not update.message.photo:
+        return
+
+    await update.message.reply_text("⏳ Анализирую фото и готовлю ссылки для интернета и VK...")
+
+    # Highest resolution photo from Telegram message.
+    photo = update.message.photo[-1]
+    tg_file = await context.bot.get_file(photo.file_id)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+        tmp_path = tmp.name
+
+    try:
+        await tg_file.download_to_drive(custom_path=tmp_path)
+        photo_result = universal_search.universal_photo_search(tmp_path, ["metadata", "search_engines"])
+
+        token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+        file_url = ""
+        if token and getattr(tg_file, "file_path", ""):
+            file_url = f"https://api.telegram.org/file/bot{token}/{tg_file.file_path}"
+
+        query_hint = update.message.caption or _safe_get(photo_result, "results", "metadata", "filename", default="")
+        vk_links = _build_vk_photo_links(file_url, str(query_hint))
+
+        await update.message.reply_text(_format_photo_result(photo_result, vk_links), parse_mode=ParseMode.HTML)
+    except (requests.RequestException, OSError, ValueError, RuntimeError) as exc:
+        await update.message.reply_text(f"❌ Ошибка анализа фото: <code>{str(exc)}</code>", parse_mode=ParseMode.HTML)
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+
 async def text_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     allowed_chat_ids: Set[int] = context.application.bot_data.get("allowed_chat_ids", set())
     if await _deny_if_not_allowed(update, allowed_chat_ids):
@@ -275,7 +627,37 @@ async def text_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not update.message or not update.message.text:
         return
 
-    phone = update.message.text.strip()
+    text = update.message.text.strip()
+
+    # UI keyboard button actions
+    if text == BTN_PHONE:
+        await update.message.reply_text(
+            "Введи номер в международном формате, например: <code>+79001234567</code>",
+            parse_mode=ParseMode.HTML,
+            reply_markup=_main_menu(),
+        )
+        return
+
+    if text == BTN_PHOTO:
+        await update.message.reply_text(
+            "Пришли фото в чат — я подготовлю reverse image search ссылки по интернету и VK.",
+            reply_markup=_main_menu(),
+        )
+        return
+
+    if text == BTN_FSSP:
+        await update.message.reply_text(
+            "Формат: <code>/fssp Иванов Иван Иванович;1990-01-01;77</code>",
+            parse_mode=ParseMode.HTML,
+            reply_markup=_main_menu(),
+        )
+        return
+
+    if text == BTN_HELP:
+        await help_cmd(update, context)
+        return
+
+    phone = text
     await _run_search_and_reply(update, phone)
 
 
@@ -286,12 +668,20 @@ def build_app(token: str) -> Application:
     app.add_handler(CommandHandler("search", search_cmd))
     app.add_handler(CommandHandler("ip", ip_cmd))
     app.add_handler(CommandHandler("email", email_cmd))
+    app.add_handler(CommandHandler("fssp", fssp_cmd))
+    app.add_handler(MessageHandler(filters.PHOTO, photo_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_fallback))
     return app
 
 
 def run_sync() -> None:
-    asyncio.run(run())
+    lock = SingleInstanceLock()
+    try:
+        with lock:
+            asyncio.run(run())
+    except RuntimeError as exc:
+        logger.error("%s", exc)
+        raise SystemExit(2) from exc
 
 
 async def run() -> None:
