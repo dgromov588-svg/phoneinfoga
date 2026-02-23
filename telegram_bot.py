@@ -82,8 +82,9 @@ class SingleInstanceLock:
                 self._fh.seek(0)
                 msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)
             else:
-                import fcntl
+                import importlib
 
+                fcntl = importlib.import_module("fcntl")  # type: ignore[reportMissingImports]
                 fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as exc:
             self._fh.close()
@@ -106,8 +107,9 @@ class SingleInstanceLock:
                 self._fh.seek(0)
                 msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)
             else:
-                import fcntl
+                import importlib
 
+                fcntl = importlib.import_module("fcntl")  # type: ignore[reportMissingImports]
                 fcntl.flock(self._fh.fileno(), fcntl.LOCK_UN)
         except OSError:
             pass

@@ -10,7 +10,6 @@ We intentionally do NOT include features that facilitate hacking / abuse.
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import sys
 from typing import List

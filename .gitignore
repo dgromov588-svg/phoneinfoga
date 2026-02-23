@@ -61,3 +61,16 @@ api_keys.txt
 
 # Local business directory database (PII)
 business_directory.db
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Test / type checker caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
