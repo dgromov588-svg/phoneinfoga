@@ -45,7 +45,7 @@ def cmd_email(args: argparse.Namespace) -> int:
 
 
 def cmd_phone(args: argparse.Namespace) -> int:
-    search_types: List[str] = args.search_types or ["basic", "google", "social"]
+    search_types: List[str] = args.search_types or ["basic", "google", "social", "ru_resources"]
     payload = universal_search.universal_phone_search(args.phone, search_types)
     _print_json(payload)
     return 0 if payload.get("valid") else 2
@@ -108,6 +108,19 @@ def cmd_telegram_bot(args: argparse.Namespace) -> int:
         return 1
 
 
+def cmd_telegram_bot_copy(args: argparse.Namespace) -> int:
+    _ = args
+    from telegram_bot_copy import run_sync
+
+    try:
+        run_sync()
+        return 0
+    except SystemExit as exc:
+        if isinstance(exc.code, int):
+            return exc.code
+        return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="osint_cli", description="Unified OSINT CLI (safe subset).")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -157,6 +170,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     tg = sub.add_parser("telegram-bot", help="Run Telegram bot integration")
     tg.set_defaults(func=cmd_telegram_bot)
+
+    tg_copy = sub.add_parser("telegram-bot-copy", help="Run second Telegram bot instance")
+    tg_copy.set_defaults(func=cmd_telegram_bot_copy)
 
     return p
 

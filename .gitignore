@@ -74,3 +74,6 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+# Local SSH keys
+id_ed25519_phoneinfoga
+id_ed25519_phoneinfoga.pub

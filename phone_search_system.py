@@ -18,6 +18,7 @@ import logging
 
 # Local breach database (redacted output only)
 from data_breaches import DataBreachesParser
+from ru_resources import build_ru_resource_links
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -386,7 +387,7 @@ class PhoneSearchSystem:
     def comprehensive_search(self, phone_number: str, search_types: List[str] = None) -> Dict[str, Any]:
         """Comprehensive phone number search"""
         if search_types is None:
-            search_types = ['basic', 'google', 'social']
+            search_types = ['basic', 'google', 'social', 'ru_sources']
         
         # Validate phone number
         parsed = self.validate_and_parse(phone_number)
@@ -437,6 +438,9 @@ class PhoneSearchSystem:
         # Local breach databases (redacted)
         if 'data_breaches' in search_types or 'all' in search_types:
             results['results']['data_breaches'] = self._data_breaches_search(formatted)
+        
+        if 'ru_sources' in search_types or 'all' in search_types:
+            results['results']['ru_sources'] = build_ru_resource_links(formatted)
         
         return results
 

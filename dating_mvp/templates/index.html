@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Лента{% endblock %}
+{% block content %}
+<h1>Привет, {{ me['name'] }} 👋</h1>
+
+<section class="card">
+  <h3>Ваш профиль</h3>
+  {% if me['avatar_url'] %}
+    <img class="avatar" src="{{ me['avatar_url'] }}" alt="Ваш аватар" />
+  {% endif %}
+  <form method="post" action="{{ url_for('upload_avatar') }}" enctype="multipart/form-data" class="form-inline">
+    <label class="file-label" for="avatar-upload">Выбрать фото</label>
+    <input id="avatar-upload" type="file" name="avatar" accept="image/*" required />
+    <button type="submit">Обновить аватар</button>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Фильтр</h3>
+  <form method="get" class="form-inline">
+    <input name="city" placeholder="Город" />
+    <input name="min_age" type="number" min="18" placeholder="Мин. возраст" />
+    <input name="max_age" type="number" min="18" placeholder="Макс. возраст" />
+    <button type="submit">Применить</button>
+  </form>
+</section>
+
+<section class="grid">
+  {% for p in profiles %}
+    <article class="card">
+      {% if p['avatar_url'] %}
+        <img class="avatar" src="{{ p['avatar_url'] }}" alt="Аватар {{ p['name'] }}" />
+      {% endif %}
+      <h3>{{ p['name'] }}, {{ p['age'] }}</h3>
+      <p>📍 {{ p['city'] }}</p>
+      <p>{{ p['bio'] or 'Без описания' }}</p>
+      <form method="post" action="{{ url_for('like_user', user_id=p['id']) }}">
+        <button type="submit" {% if p['liked_by_me'] %}disabled{% endif %}>
+          {% if p['liked_by_me'] %}Уже лайкнули{% else %}Лайк{% endif %}
+        </button>
+      </form>
+    </article>
+  {% else %}
+    <p>Пока никого по фильтру не найдено.</p>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h3>Ваши мэтчи (быстро)</h3>
+  {% if matches %}
+    <div class="match-list">
+      {% for m in matches %}
+        <p>{{ m['name'] }}, {{ m['age'] }} ({{ m['city'] }}) — <a href="{{ url_for('chat', other_user_id=m['id']) }}">Открыть чат</a></p>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>Пока нет мэтчей.</p>
+  {% endif %}
+</section>
+{% endblock %}

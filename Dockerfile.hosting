@@ -1,0 +1,77 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    APP_DIR=/opt/app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates bash \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt
+
+# Runtime configuration (override on hosting platform):
+# - REPO_URL: required, your git repository URL
+# - REPO_BRANCH: optional, default "master"
+# - APP_CMD: optional, default command to run app
+# - AUTO_UPDATE: optional, "true" (default) to git pull on each start
+ENV REPO_URL="" \
+    REPO_BRANCH="master" \
+    APP_CMD="python universal_search_system.py" \
+    AUTO_UPDATE="true"
+
+EXPOSE 5000
+
+CMD ["bash", "-lc", "set -euo pipefail; \
+if [ -z \"${REPO_URL}\" ]; then \
+  echo 'ERROR: REPO_URL is empty. Set repository URL in environment.'; \
+  exit 1; \
+fi; \
+if [ ! -d \"${APP_DIR}/.git\" ]; then \
+  echo \"[hosting] Cloning repository: ${REPO_URL} (branch: ${REPO_BRANCH})\"; \
+  rm -rf \"${APP_DIR}\"; \
+  if git clone --branch \"${REPO_BRANCH}\" --single-branch \"${REPO_URL}\" \"${APP_DIR}\"; then \
+    echo \"[hosting] Clone ok on branch ${REPO_BRANCH}\"; \
+  else \
+    echo \"[hosting] Branch ${REPO_BRANCH} not found. Trying remote default branch...\"; \
+    DEFAULT_BRANCH=$(git ls-remote --symref \"${REPO_URL}\" HEAD | sed -n 's#^ref: refs/heads/\\([^[:space:]]*\\)[[:space:]]\\+HEAD#\\1#p' | head -n1 || true); \
+    if [ -n \"${DEFAULT_BRANCH}\" ]; then \
+      echo \"[hosting] Detected default branch: ${DEFAULT_BRANCH}\"; \
+      git clone --branch \"${DEFAULT_BRANCH}\" --single-branch \"${REPO_URL}\" \"${APP_DIR}\"; \
+      REPO_BRANCH=\"${DEFAULT_BRANCH}\"; \
+    else \
+      echo '[hosting] Could not detect default branch. Falling back to plain clone.'; \
+      git clone \"${REPO_URL}\" \"${APP_DIR}\"; \
+    fi; \
+  fi; \
+else \
+  echo \"[hosting] Repository already exists at ${APP_DIR}\"; \
+  if [ \"${AUTO_UPDATE}\" = \"true\" ]; then \
+    echo '[hosting] Pulling latest changes...'; \
+    git -C \"${APP_DIR}\" fetch --all --prune; \
+    if git -C \"${APP_DIR}\" show-ref --verify --quiet \"refs/remotes/origin/${REPO_BRANCH}\"; then \
+      git -C \"${APP_DIR}\" reset --hard \"origin/${REPO_BRANCH}\"; \
+    else \
+      DEFAULT_BRANCH=$(git -C \"${APP_DIR}\" remote show origin | sed -n 's/.*HEAD branch: //p' | head -n1 || true); \
+      if [ -n \"${DEFAULT_BRANCH}\" ] && git -C \"${APP_DIR}\" show-ref --verify --quiet \"refs/remotes/origin/${DEFAULT_BRANCH}\"; then \
+        echo \"[hosting] Branch ${REPO_BRANCH} not found. Switching to origin/${DEFAULT_BRANCH}\"; \
+        git -C \"${APP_DIR}\" reset --hard \"origin/${DEFAULT_BRANCH}\"; \
+      else \
+        echo '[hosting] Warning: no matching remote branch found after fetch; continuing with current checkout.'; \
+      fi; \
+    fi; \
+  fi; \
+fi; \
+cd \"${APP_DIR}\"; \
+if [ -f requirements.txt ]; then \
+  echo '[hosting] Installing requirements.txt'; \
+  python -m pip install --upgrade pip; \
+  pip install -r requirements.txt; \
+fi; \
+if [ -f requirements_enhanced.txt ]; then \
+  echo '[hosting] Installing requirements_enhanced.txt'; \
+  pip install -r requirements_enhanced.txt; \
+fi; \
+echo \"[hosting] Starting app: ${APP_CMD}\"; \
+exec bash -lc \"${APP_CMD}\""]

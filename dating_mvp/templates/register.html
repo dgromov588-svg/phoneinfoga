@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация{% endblock %}
+{% block content %}
+<h1>Регистрация</h1>
+<form method="post" class="card form-grid" enctype="multipart/form-data">
+  <label>Email<input type="email" name="email" required /></label>
+  <label>Пароль<input type="password" name="password" minlength="6" required /></label>
+  <label>Имя<input type="text" name="name" required /></label>
+  <label>Возраст<input type="number" name="age" min="18" required /></label>
+  <label>Ваш пол<input type="text" name="gender" placeholder="male/female" required /></label>
+  <label>Ищу<input type="text" name="looking_for" placeholder="male/female" required /></label>
+  <label>Город<input type="text" name="city" required /></label>
+  <label>Аватар<input type="file" name="avatar" accept="image/*" /></label>
+  <label>О себе<textarea name="bio" rows="4"></textarea></label>
+  <button type="submit">Создать профиль</button>
+</form>
+{% endblock %}

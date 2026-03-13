@@ -22,6 +22,7 @@ from urllib.parse import quote
 # Local data-breaches database (redacted output only)
 from data_breaches import DataBreachesParser
 from directory_db import search_records, stats_by_city_and_category
+from ru_resources import build_ru_resource_links
 
 # Optional .env support (do not hard-require python-dotenv)
 try:
@@ -733,7 +734,7 @@ class UniversalSearchSystem:
     def universal_phone_search(self, phone_number: str, search_types: List[str] = None) -> Dict[str, Any]:
         """Universal phone search across all sources"""
         if search_types is None:
-            search_types = ['basic', 'google', 'social']
+            search_types = ['basic', 'google', 'social', 'ru_resources']
         
         parsed = self.validate_and_parse(phone_number)
         if not parsed:
@@ -782,6 +783,9 @@ class UniversalSearchSystem:
         # Local breach databases (redacted)
         if 'data_breaches' in search_types or 'all' in search_types:
             results['results']['data_breaches'] = self.data_breaches_search(formatted)
+
+        if 'ru_resources' in search_types or 'all' in search_types:
+            results['results']['ru_resources'] = build_ru_resource_links(formatted)
 
         # Optional external vendor lookups (requires user-supplied API keys)
         if 'xosint_phone' in search_types:

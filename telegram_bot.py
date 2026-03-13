@@ -54,6 +54,16 @@ try:
 except ImportError:
     _GSHEETS_AVAILABLE = False
 
+try:
+    from telethon import TelegramClient
+    from telethon.errors import RPCError
+
+    _TELETHON_AVAILABLE = True
+except ImportError:
+    TelegramClient = None  # type: ignore[assignment]
+    RPCError = Exception  # type: ignore[assignment]
+    _TELETHON_AVAILABLE = False
+
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -74,6 +84,7 @@ BTN_BACK = "⬅️ Назад"
 BTN_HOME = "🏠 Главное меню"
 BTN_TG = "👤 Ник в Telegram"
 BTN_TG_CATALOG = "💬 Каталог Telegram"
+BTN_MY_CHATS_PHONE = "📬 Забив номера"
 BTN_FSSP = "⚖️ Проверка ФССП"
 BTN_REPORT_767 = "📊 Отчёт 767"
 BTN_ADMIN = "🛠 Панель администратора"
@@ -105,6 +116,8 @@ MODE_GREEN_ORDER_NAME = "green_order_name"
 MODE_GREEN_ORDER_DOB = "green_order_dob"
 MODE_GREEN_ORDER_COUNT = "green_order_count"
 MODE_GREEN_ORDER_VK = "green_order_vk"
+MODE_MY_CHATS_PHONE = "my_chats_phone"
+MODE_MY_CHATS_TARGET = "my_chats_target"
 _GS_WORKSHEET = None
 _GS_ERROR: Optional[str] = None
 _RUNTIME_ADMIN_CHAT_IDS: Set[int] = set()
@@ -112,12 +125,12 @@ _RUNTIME_ADMIN_CHAT_IDS: Set[int] = set()
 
 def _main_menu(include_admin: bool = False) -> ReplyKeyboardMarkup:
     keyboard = [
-        [KeyboardButton(BTN_PHONE), KeyboardButton(BTN_PHOTO)],
-        [KeyboardButton(BTN_PHOTO_ENHANCE), KeyboardButton(BTN_TG)],
-        [KeyboardButton(BTN_TG_CATALOG), KeyboardButton(BTN_FSSP)],
-        [KeyboardButton(BTN_REPORT_767), KeyboardButton(BTN_SOURCE)],
-        [KeyboardButton(BTN_GREEN_ORDER), KeyboardButton(BTN_HELP)],
-        [KeyboardButton(BTN_ID)],
+        [KeyboardButton(BTN_PHONE), KeyboardButton(BTN_MY_CHATS_PHONE)],
+        [KeyboardButton(BTN_PHOTO), KeyboardButton(BTN_PHOTO_ENHANCE)],
+        [KeyboardButton(BTN_TG), KeyboardButton(BTN_TG_CATALOG)],
+        [KeyboardButton(BTN_FSSP), KeyboardButton(BTN_REPORT_767)],
+        [KeyboardButton(BTN_SOURCE), KeyboardButton(BTN_GREEN_ORDER)],
+        [KeyboardButton(BTN_HELP), KeyboardButton(BTN_ID)],
     ]
     if include_admin:
         keyboard.append([KeyboardButton(BTN_ADMIN)])
@@ -353,6 +366,7 @@ def _clear_input_state(context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data.pop("input_mode", None)
     context.user_data.pop("report767_draft", None)
     context.user_data.pop("green_order", None)
+    context.user_data.pop("my_chats_check", None)
 
 
 def _safe_get(d: Dict[str, Any], *keys: str, default: Any = "—") -> Any:
@@ -572,43 +586,12 @@ def _format_result(payload: Dict[str, Any]) -> str:
     if isinstance(search_engines, dict) and search_engines:
         lines.append("")
         lines.append("<b>Поисковые системы</b>")
-        for engine in ["google", "yandex", "bing", "duckduckgo", "startpage", "yahoo"]:
-            data = search_engines.get(engine)
-            if not isinstance(data, dict):
-                continue
-            title = data.get("engine") or engine
-            url = data.get("search_url") or data.get("url") or ""
-            if url:
-                lines.append(f"• {title}: {url}")
+        lines.append("• Ссылки вынесены в кнопки ниже.")
 
     if isinstance(social_platforms, dict) and social_platforms:
         lines.append("")
         lines.append("<b>Соцсети/мессенджеры</b>")
-        for platform in [
-            "telegram",
-            "whatsapp",
-            "vk",
-            "facebook",
-            "instagram",
-            "twitter",
-            "linkedin",
-            "tiktok",
-            "reddit",
-            "discord",
-        ]:
-            data = social_platforms.get(platform)
-            if not isinstance(data, dict):
-                continue
-            title = data.get("platform") or platform
-            url = (
-                data.get("search_url")
-                or data.get("direct_url")
-                or data.get("chat_url")
-                or data.get("profile_url")
-                or ""
-            )
-            if url:
-                lines.append(f"• {title}: {url}")
+        lines.append("• Ссылки вынесены в кнопки ниже.")
 
     ru_sources = payload.get("results", {}).get("ru_sources", [])
     if isinstance(ru_sources, list) and ru_sources:
@@ -625,6 +608,99 @@ def _format_result(payload: Dict[str, Any]) -> str:
                 lines.append(f"• {label}")
 
     return _compact_lines(lines)
+
+
+def _extract_phone_resources(payload: Dict[str, Any]) -> Dict[str, List[Dict[str, str]]]:
+    engines: List[Dict[str, str]] = []
+    socials: List[Dict[str, str]] = []
+
+    search_engines = _safe_get(payload, "results", "search_engines", default={})
+    social_platforms = _safe_get(payload, "results", "social_platforms", default={})
+
+    engine_order = [
+        ("google", "Google", "🔎"),
+        ("yandex", "Yandex", "🟡"),
+        ("bing", "Bing", "🟦"),
+        ("duckduckgo", "DuckDuckGo", "🦆"),
+        ("startpage", "Startpage", "🧭"),
+        ("yahoo", "Yahoo", "🟣"),
+    ]
+    for key, title, icon in engine_order:
+        data = search_engines.get(key) if isinstance(search_engines, dict) else None
+        if not isinstance(data, dict):
+            continue
+        url = str(data.get("search_url") or data.get("url") or "").strip()
+        if not (url.startswith("http://") or url.startswith("https://")):
+            continue
+        engines.append({"title": title, "icon": icon, "url": url})
+
+    social_order = [
+        ("telegram", "Telegram", "✈️"),
+        ("whatsapp", "WhatsApp", "🟢"),
+        ("vk", "VK", "🔵"),
+        ("facebook", "Facebook", "📘"),
+        ("instagram", "Instagram", "📸"),
+        ("twitter", "Twitter/X", "🐦"),
+        ("linkedin", "LinkedIn", "💼"),
+        ("tiktok", "TikTok", "🎵"),
+        ("reddit", "Reddit", "👽"),
+        ("discord", "Discord", "🎮"),
+    ]
+    for key, title, icon in social_order:
+        data = social_platforms.get(key) if isinstance(social_platforms, dict) else None
+        if not isinstance(data, dict):
+            continue
+        url = str(
+            data.get("search_url")
+            or data.get("direct_url")
+            or data.get("chat_url")
+            or data.get("profile_url")
+            or ""
+        ).strip()
+        if not (url.startswith("http://") or url.startswith("https://")):
+            continue
+        socials.append({"title": title, "icon": icon, "url": url})
+
+    return {"engines": engines, "socials": socials}
+
+
+def _resources_to_markup(items: List[Dict[str, str]], per_row: int = 2) -> InlineKeyboardMarkup:
+    rows: List[List[InlineKeyboardButton]] = []
+    row: List[InlineKeyboardButton] = []
+    for item in items:
+        label = f"{item.get('icon', '🔗')} {item.get('title', 'Ссылка')} • Перейти"
+        row.append(InlineKeyboardButton(label, url=item.get("url", "")))
+        if len(row) >= per_row:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    return InlineKeyboardMarkup(rows)
+
+
+async def _send_phone_resources_buttons(update: Update, payload: Dict[str, Any]) -> None:
+    if not update.message:
+        return
+
+    resources = _extract_phone_resources(payload)
+    engines = resources.get("engines", [])
+    socials = resources.get("socials", [])
+
+    if engines:
+        await update.message.reply_text(
+            "🔎 <b>Поисковые системы</b>\nНажми кнопку нужного ресурса:",
+            parse_mode=ParseMode.HTML,
+            reply_markup=_resources_to_markup(engines),
+            disable_web_page_preview=True,
+        )
+
+    if socials:
+        await update.message.reply_text(
+            "💬 <b>Соцсети и мессенджеры</b>\nНажми кнопку нужного ресурса:",
+            parse_mode=ParseMode.HTML,
+            reply_markup=_resources_to_markup(socials),
+            disable_web_page_preview=True,
+        )
 
 
 def _format_ip_result(payload: Dict[str, Any]) -> str:
@@ -838,6 +914,208 @@ def _enhance_photo_file(input_path: str, output_path: str) -> None:
 
 def _arg_from_context(context: ContextTypes.DEFAULT_TYPE) -> str:
     return " ".join(context.args).strip() if context.args else ""
+
+
+def _normalize_phone_for_my_chats(raw: str) -> str:
+    value = (raw or "").strip()
+    if not value:
+        raise ValueError("Укажи номер телефона.")
+
+    digits = re.sub(r"\D", "", value)
+    if len(digits) < 10:
+        raise ValueError("Номер слишком короткий. Пример: <code>+79001234567</code>")
+    if len(digits) > 15:
+        raise ValueError("Номер слишком длинный. Используй международный формат.")
+
+    # Common RU normalization: 8XXXXXXXXXX -> +7XXXXXXXXXX
+    if len(digits) == 11 and digits.startswith("8"):
+        digits = "7" + digits[1:]
+    elif len(digits) == 10:
+        digits = "7" + digits
+
+    return f"+{digits}"
+
+
+def _format_telethon_sender(sender: Any, sender_id: int = 0) -> str:
+    if sender is None:
+        return f"id:{sender_id}" if sender_id else "неизвестно"
+
+    username = str(getattr(sender, "username", "") or "").strip()
+    if username:
+        return f"@{username}"
+
+    title = str(getattr(sender, "title", "") or "").strip()
+    if title:
+        return title
+
+    first_name = str(getattr(sender, "first_name", "") or "").strip()
+    last_name = str(getattr(sender, "last_name", "") or "").strip()
+    full_name = " ".join(part for part in [first_name, last_name] if part).strip()
+    if full_name:
+        return full_name
+
+    fallback_id = int(getattr(sender, "id", 0) or 0)
+    if fallback_id:
+        return f"id:{fallback_id}"
+    if sender_id:
+        return f"id:{sender_id}"
+    return "неизвестно"
+
+
+def _build_my_chats_phone_tokens(phone: str) -> List[str]:
+    digits = re.sub(r"\D", "", phone)
+    tokens: Set[str] = {phone, digits}
+
+    if len(digits) == 11 and digits.startswith("7"):
+        local = digits[1:]
+        tokens.add("8" + local)
+        tokens.add(f"+7{local}")
+        tokens.add(f"+7 ({local[:3]}) {local[3:6]}-{local[6:8]}-{local[8:10]}")
+        tokens.add(f"8 ({local[:3]}) {local[3:6]}-{local[6:8]}-{local[8:10]}")
+
+    return sorted((t for t in tokens if t), key=len, reverse=True)
+
+
+def _normalize_target_chat_link(raw: str) -> str:
+    value = (raw or "").strip()
+    if not value:
+        raise ValueError("Укажи ссылку на чат или @username.")
+
+    if value.startswith("@"):
+        return value
+
+    lowered = value.lower()
+    prefixes = (
+        "https://t.me/",
+        "http://t.me/",
+        "t.me/",
+        "https://telegram.me/",
+        "http://telegram.me/",
+        "telegram.me/",
+    )
+    for prefix in prefixes:
+        if lowered.startswith(prefix):
+            suffix = value[len(prefix):].strip().split("?", 1)[0].strip("/")
+            if not suffix:
+                raise ValueError("Некорректная ссылка. Пример: <code>https://t.me/chatname</code>")
+            return f"https://t.me/{suffix}"
+
+    raise ValueError("Нужна ссылка вида <code>https://t.me/...</code> или <code>@username</code>.")
+
+
+async def _check_phone_in_my_chats_and_send_if_missing(phone: str, target_chat_link: str) -> Dict[str, Any]:
+    if not _TELETHON_AVAILABLE:
+        return {
+            "ok": False,
+            "error": "Модуль <code>telethon</code> не установлен. Установи: <code>pip install telethon</code>.",
+        }
+
+    api_id = _parse_optional_int(os.getenv("TG_USER_API_ID", ""))
+    api_hash = os.getenv("TG_USER_API_HASH", "").strip()
+    session = os.getenv("TG_USER_SESSION", "").strip() or os.getenv("TG_USER_SESSION_FILE", "").strip()
+    if not session:
+        session = "tg_user_session"
+
+    if not api_id or not api_hash:
+        return {
+            "ok": False,
+            "error": (
+                "Не настроен пользовательский Telegram-аккаунт. "
+                "Нужны переменные <code>TG_USER_API_ID</code> и <code>TG_USER_API_HASH</code>."
+            ),
+        }
+
+    dialogs_limit = _parse_optional_int(os.getenv("TG_USER_DIALOGS_LIMIT", "")) or 150
+    found_limit = _parse_optional_int(os.getenv("TG_USER_FOUND_LIMIT", "")) or 8
+    tokens = _build_my_chats_phone_tokens(phone)
+
+    template = os.getenv("TG_USER_SEND_TEMPLATE", "Номер {phone} не найден в моих чатах.").strip()
+    try:
+        message_text = template.format(phone=phone)
+    except (KeyError, ValueError):
+        message_text = template.replace("{phone}", phone)
+
+    client = TelegramClient(session, int(api_id), api_hash)  # type: ignore[misc]
+    try:
+        await client.connect()
+        if not await client.is_user_authorized():
+            return {
+                "ok": False,
+                "error": (
+                    "Пользовательская сессия Telegram не авторизована. "
+                    "Сначала авторизуй сессию для <code>TG_USER_SESSION</code>."
+                ),
+            }
+
+        found: List[Dict[str, Any]] = []
+        checked_dialogs = 0
+
+        async for dialog in client.iter_dialogs(limit=dialogs_limit):
+            checked_dialogs += 1
+            title = (dialog.title or "").strip() or str(getattr(dialog.entity, "id", "—"))
+            username = str(getattr(dialog.entity, "username", "") or "").strip()
+            chat_ref = f"https://t.me/{username}" if username else "приватный чат/без username"
+
+            for token in tokens:
+                try:
+                    items = await client.get_messages(dialog.entity, limit=1, search=token)
+                except RPCError:
+                    continue
+                if not items:
+                    continue
+                msg = items[0]
+                msg_date = getattr(msg, "date", None)
+                msg_date_str = (
+                    msg_date.strftime("%Y-%m-%d %H:%M:%S UTC")
+                    if msg_date
+                    else "—"
+                )
+                sender_id = int(getattr(msg, "sender_id", 0) or 0)
+                sender_display = f"id:{sender_id}" if sender_id else "неизвестно"
+                with contextlib.suppress(RPCError, ValueError, TypeError):
+                    sender = await msg.get_sender()
+                    sender_display = _format_telethon_sender(sender, sender_id)
+                found.append(
+                    {
+                        "title": title,
+                        "chat_ref": chat_ref,
+                        "message_id": int(getattr(msg, "id", 0) or 0),
+                        "token": token,
+                        "message_date": msg_date_str,
+                        "sender": sender_display,
+                    }
+                )
+                break
+
+            if len(found) >= found_limit:
+                break
+
+        if found:
+            return {
+                "ok": True,
+                "found": True,
+                "checked_dialogs": checked_dialogs,
+                "matches": found,
+            }
+
+        entity = await client.get_entity(target_chat_link)
+        sent = await client.send_message(entity, message_text)
+        return {
+            "ok": True,
+            "found": False,
+            "checked_dialogs": checked_dialogs,
+            "sent": True,
+            "target_chat_link": target_chat_link,
+            "sent_message_id": int(getattr(sent, "id", 0) or 0),
+            "sent_text": message_text,
+        }
+    except RPCError as exc:
+        return {"ok": False, "error": f"Ошибка Telegram API: <code>{exc}</code>"}
+    except Exception as exc:
+        return {"ok": False, "error": f"Ошибка проверки чатов: <code>{exc}</code>"}
+    finally:
+        with contextlib.suppress(Exception):
+            await client.disconnect()
 
 
 def _normalize_tg_username(raw: str) -> str:
@@ -1837,6 +2115,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [
             "OSINT-проверка телефонов, Telegram и фото в одном интерфейсе.",
             "Выбери нужную функцию кнопками ниже.",
+            "Есть отдельный режим проверки номера по вашим личным чатам Telegram.",
             "Для перехода между режимами используй кнопки навигации.",
         ],
         _back_hint(),
@@ -1857,6 +2136,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "Справка по функциям",
             [
                 "📞 Поиск номера — номер в международном формате.",
+                "📬 Забив номера — поиск номера по вашим чатам Telegram.",
                 "🖼 Поиск по фото — отправь фото для поиска.",
                 "✨ Улучшение фото — отправь фото для обработки.",
                 "👤 Ник Telegram — введи <code>@ник</code>.",
@@ -1939,6 +2219,7 @@ async def _run_search_and_reply(update: Update, phone: str) -> None:
 
     result_text = _format_result(payload)
     await _reply_with_pdf_report(update, f"Отчет по номеру {phone}", result_text, include_text=True)
+    await _send_phone_resources_buttons(update, payload)
 
 
 async def search_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2610,6 +2891,74 @@ async def unknown_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
 
+async def _finalize_my_chats_check(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    phone: str,
+    target_chat_link: str,
+) -> None:
+    if not update.message:
+        return
+
+    await update.message.reply_text("⏳ Проверяю ваши чаты Telegram...", reply_markup=_back_menu())
+    result = await _check_phone_in_my_chats_and_send_if_missing(phone, target_chat_link)
+    _clear_input_state(context)
+
+    if not result.get("ok"):
+        await _reply_menu_text(
+            update,
+            _ui_card(
+                "Проверка по вашим чатам Telegram",
+                [
+                    f"❌ {result.get('error', 'Не удалось выполнить проверку.')}",
+                    "Проверь настройки: <code>TG_USER_API_ID</code>, <code>TG_USER_API_HASH</code>, <code>TG_USER_SESSION</code>.",
+                ],
+            ),
+        )
+        return
+
+    checked_dialogs = int(result.get("checked_dialogs", 0) or 0)
+    if result.get("found"):
+        matches = result.get("matches", [])
+        if not isinstance(matches, list):
+            matches = []
+        lines = [
+            f"Номер: <code>{phone}</code>",
+            f"Проверено чатов: <b>{checked_dialogs}</b>",
+            f"Найдено совпадений: <b>{len(matches)}</b>",
+            "✅ Номер был в работе.",
+            "",
+        ]
+        for item in matches[:8]:
+            title = str(item.get("title", "—"))
+            chat_ref = str(item.get("chat_ref", "—"))
+            message_date = str(item.get("message_date", "—"))
+            sender = str(item.get("sender", "неизвестно"))
+            lines.append(f"• Чат: <b>{title}</b>")
+            lines.append(f"  Дата сообщения: <code>{message_date}</code>")
+            lines.append(f"  Отправитель: <code>{sender}</code>")
+            lines.append(f"  Ссылка: {chat_ref}")
+        await _reply_menu_text(
+            update,
+            _ui_card("Проверка по вашим чатам Telegram", lines),
+        )
+        return
+
+    lines = [
+        f"Номер: <code>{phone}</code>",
+        f"Проверено чатов: <b>{checked_dialogs}</b>",
+        "Совпадений не найдено.",
+        f"Отправлено в чат: <code>{result.get('target_chat_link', target_chat_link)}</code>",
+    ]
+    sent_message_id = int(result.get("sent_message_id", 0) or 0)
+    if sent_message_id:
+        lines.append(f"ID отправленного сообщения: <code>{sent_message_id}</code>")
+    await _reply_menu_text(
+        update,
+        _ui_card("Проверка по вашим чатам Telegram", lines),
+    )
+
+
 async def text_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     allowed_chat_ids: Set[int] = context.application.bot_data.get("allowed_chat_ids", set())
     if await _deny_if_not_allowed(update, allowed_chat_ids):
@@ -2648,6 +2997,25 @@ async def text_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 [
                     "Введи номер в международном формате.",
                     "Пример: <code>+79001234567</code>",
+                ],
+                _back_hint(),
+            ),
+            parse_mode=ParseMode.HTML,
+            reply_markup=_back_menu(),
+        )
+        return
+
+    if text == BTN_MY_CHATS_PHONE:
+        _clear_input_state(context)
+        context.user_data["input_mode"] = MODE_MY_CHATS_PHONE
+        context.user_data["my_chats_check"] = {}
+        await update.message.reply_text(
+            _ui_card(
+                "Проверка по вашим чатам Telegram",
+                [
+                    "Введи номер для поиска в ваших личных чатах.",
+                    "Пример: <code>+79001234567</code>",
+                    "Если номер не найден, бот автоматически отправит сообщение в целевой чат из <code>TG_USER_TARGET_CHAT</code>.",
                 ],
                 _back_hint(),
             ),
@@ -2779,6 +3147,90 @@ async def text_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if text == BTN_ID:
         _clear_input_state(context)
         await id_cmd(update, context)
+        return
+
+    if mode == MODE_MY_CHATS_PHONE:
+        try:
+            phone = _normalize_phone_for_my_chats(text)
+        except ValueError as exc:
+            await update.message.reply_text(
+                _ui_card(
+                    "Проверка по вашим чатам Telegram",
+                    [f"❌ {exc}"],
+                    _back_hint(),
+                ),
+                parse_mode=ParseMode.HTML,
+                reply_markup=_back_menu(),
+            )
+            return
+
+        target_chat_raw = os.getenv("TG_USER_TARGET_CHAT", "").strip()
+        if not target_chat_raw:
+            await update.message.reply_text(
+                _ui_card(
+                    "Проверка по вашим чатам Telegram",
+                    [
+                        "❌ Не настроен автоматический целевой чат.",
+                        "Добавь в <code>.env</code> переменную <code>TG_USER_TARGET_CHAT</code> (например: <code>https://t.me/chatname</code> или <code>@chatname</code>).",
+                    ],
+                    _back_hint(),
+                ),
+                parse_mode=ParseMode.HTML,
+                reply_markup=_back_menu(),
+            )
+            return
+
+        try:
+            target_chat_link = _normalize_target_chat_link(target_chat_raw)
+        except ValueError as exc:
+            await update.message.reply_text(
+                _ui_card(
+                    "Проверка по вашим чатам Telegram",
+                    [
+                        f"❌ Некорректный <code>TG_USER_TARGET_CHAT</code>: {exc}",
+                        "Исправь переменную в <code>.env</code>.",
+                    ],
+                    _back_hint(),
+                ),
+                parse_mode=ParseMode.HTML,
+                reply_markup=_back_menu(),
+            )
+            return
+
+        await _finalize_my_chats_check(update, context, phone, target_chat_link)
+        return
+
+    if mode == MODE_MY_CHATS_TARGET:
+        draft = context.user_data.get("my_chats_check")
+        if not isinstance(draft, dict):
+            draft = {}
+        phone = str(draft.get("phone", "")).strip()
+        if not phone:
+            _clear_input_state(context)
+            await _reply_menu_text(
+                update,
+                _ui_card(
+                    "Проверка по вашим чатам Telegram",
+                    ["❌ Сессия устарела. Запусти функцию заново."],
+                ),
+            )
+            return
+
+        try:
+            target_chat_link = _normalize_target_chat_link(text)
+        except ValueError as exc:
+            await update.message.reply_text(
+                _ui_card(
+                    "Проверка по вашим чатам Telegram · Шаг 2/2",
+                    [f"❌ {exc}"],
+                    _back_hint(),
+                ),
+                parse_mode=ParseMode.HTML,
+                reply_markup=_back_menu(),
+            )
+            return
+
+        await _finalize_my_chats_check(update, context, phone, target_chat_link)
         return
 
     if mode == MODE_SOURCE_PICK:

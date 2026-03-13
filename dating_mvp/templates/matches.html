@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Мэтчи{% endblock %}
+{% block content %}
+<h1>Мэтчи</h1>
+{% if matches %}
+  <section class="grid">
+    {% for m in matches %}
+      <article class="card">
+        {% if m['avatar_url'] %}
+          <img class="avatar" src="{{ m['avatar_url'] }}" alt="Аватар {{ m['name'] }}" />
+        {% endif %}
+        <h3>{{ m['name'] }}, {{ m['age'] }}</h3>
+        <p>📍 {{ m['city'] }}</p>
+        <p>{{ m['bio'] or 'Без описания' }}</p>
+        <a class="btn" href="{{ url_for('chat', other_user_id=m['id']) }}">Перейти в чат</a>
+      </article>
+    {% endfor %}
+  </section>
+{% else %}
+  <p>Пока нет взаимных лайков.</p>
+{% endif %}
+{% endblock %}

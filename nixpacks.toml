@@ -1,0 +1,17 @@
+# Force Python build/start on platforms using Railway Nixpacks.
+# Some platforms mis-detect this repo as Node.js because of web/client/package.json.
+
+providers = ["python"]
+
+[variables]
+PYTHONUNBUFFERED = "1"
+PYTHONDONTWRITEBYTECODE = "1"
+
+[phases.install]
+cmds = [
+  "python -m pip install --upgrade pip",
+  "pip install -r requirements.txt",
+]
+
+[start]
+cmd = "python universal_search_system.py"

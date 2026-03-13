@@ -4,3 +4,7 @@ requests==2.31.0
 Pillow==12.1.0
 pathlib2==2.3.7
 python-telegram-bot==21.10
+reportlab==4.2.5
+gspread==6.1.2
+python-dotenv==1.0.1
+telethon==1.36.0
