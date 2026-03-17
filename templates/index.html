@@ -1,20 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhoneInfoga Python</title>
+    <title>Spam Apps DEVELOPER KIZARU</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --brand-red: #f43f5e;
+            --brand-dark: #0f172a;
+            --brand-gold: #f59e0b;
+            --panel-bg: #111827;
+        }
+        body {
+            background: radial-gradient(circle at 10% 10%, #1f2937 0%, #0b1120 45%, #05070f 100%);
+            color: #e5e7eb;
+        }
         .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background:
+                radial-gradient(circle at 80% 15%, rgba(245, 158, 11, 0.22), transparent 45%),
+                linear-gradient(135deg, #111827 0%, #1f2937 45%, #0f172a 100%);
             color: white;
             padding: 4rem 0;
+            border-bottom: 1px solid rgba(244, 63, 94, 0.25);
+        }
+        .brand-accent {
+            color: var(--brand-red);
+            text-shadow: 0 0 24px rgba(244, 63, 94, 0.45);
+        }
+        .card {
+            background: rgba(17, 24, 39, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #e5e7eb;
+            backdrop-filter: blur(6px);
         }
         .scanner-card {
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: 0 8px 22px rgba(2, 6, 23, 0.35);
             transition: transform 0.2s;
         }
         .scanner-card:hover {
@@ -29,6 +52,23 @@
         .phone-input {
             font-size: 1.2rem;
             padding: 1rem;
+            background: #020617;
+            color: #f8fafc;
+            border: 1px solid #334155;
+        }
+        .phone-input:focus {
+            border-color: var(--brand-red);
+            box-shadow: 0 0 0 0.2rem rgba(244, 63, 94, 0.2);
+            background: #020617;
+            color: #f8fafc;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--brand-red) 0%, var(--brand-gold) 100%);
+            border: none;
+            font-weight: 700;
+        }
+        .btn-primary:hover {
+            filter: brightness(1.05);
         }
         .scanner-checkbox {
             margin: 0.5rem 0;
@@ -42,14 +82,14 @@
             <div class="row align-items-center">
                 <div class="col-lg-8">
                     <h1 class="display-4 fw-bold mb-4">
-                        <i class="fas fa-phone-alt me-3"></i>PhoneInfoga Python
+                        <i class="fas fa-phone-alt me-3 brand-accent"></i>Spam Apps
+                        <span class="brand-accent">DEVELOPER KIZARU</span>
                     </h1>
                     <p class="lead mb-4">
-                        Advanced phone number information gathering framework - Python version
+                        Платформа проверки цифрового следа и OSINT-инструментов в одном интерфейсе.
                     </p>
                     <p class="mb-0">
-                        Scan international phone numbers, gather basic information, 
-                        and perform OSINT footprinting using various techniques.
+                        Быстрый запуск анализа номеров и данных с аккуратной визуализацией результатов.
                     </p>
                 </div>
                 <div class="col-lg-4">
@@ -69,29 +109,29 @@
                 <div class="card">
                     <div class="card-body">
                         <h3 class="card-title mb-4">
-                            <i class="fas fa-search me-2"></i>Scan Phone Number
+                            <i class="fas fa-search me-2"></i>Проверка номера
                         </h3>
                         
                         <form id="scanForm">
                             <div class="mb-4">
                                 <label for="phoneNumber" class="form-label fw-bold">
-                                    Phone Number
+                                    Номер телефона
                                 </label>
                                 <input 
                                     type="text" 
                                     class="form-control phone-input" 
                                     id="phoneNumber" 
-                                    placeholder="+1234567890 or 1234567890"
+                                    placeholder="+491234567890 или 1234567890"
                                     required
                                 >
                                 <div class="form-text">
-                                    Enter phone number with country code (e.g., +1234567890)
+                                    Введите номер с кодом страны (пример: +491234567890)
                                 </div>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label fw-bold">
-                                    <i class="fas fa-tools me-2"></i>Scanners
+                                    <i class="fas fa-tools me-2"></i>Модули проверки
                                 </label>
                                 <div class="row">
                                     <div class="col-md-6">
@@ -138,7 +178,7 @@
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-lg w-100">
-                                <i class="fas fa-search me-2"></i>Scan Number
+                                <i class="fas fa-search me-2"></i>Запустить проверку
                             </button>
                         </form>
                     </div>
@@ -233,8 +273,8 @@
         <div class="container">
             <div class="row">
                 <div class="col-lg-8">
-                    <h5>PhoneInfoga Python</h5>
-                    <p class="mb-0">Phone number information gathering framework</p>
+                    <h5>Spam Apps DEVELOPER KIZARU</h5>
+                    <p class="mb-0">Инструменты анализа и проверки данных</p>
                 </div>
                 <div class="col-lg-4 text-end">
                     <p class="mb-0">

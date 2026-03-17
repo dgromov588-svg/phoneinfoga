@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spam Apps DEVELOPER KIZARU</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b1120;
+            --bg-soft: #1f2937;
+            --card: #111827;
+            --card-border: rgba(244, 63, 94, 0.3);
+            --accent: #f43f5e;
+            --accent-2: #f59e0b;
+            --text: #f8fafc;
+            --muted: #cbd5e1;
+            --danger: #ff7f7f;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Manrope", sans-serif;
+            background: radial-gradient(circle at 80% -10%, #334155 0%, var(--bg) 58%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .wrap {
+            width: min(980px, 94vw);
+            margin: 0 auto;
+            padding: 20px 0 108px;
+        }
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: block;
+        }
+        .home-stack {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .home-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .home-actions button {
+            min-width: 160px;
+        }
+        .hero {
+            background: linear-gradient(140deg, rgba(244, 63, 94, 0.22), rgba(245, 158, 11, 0.18));
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+        }
+        .hero h1 {
+            margin: 0 0 8px;
+            font-size: 24px;
+            line-height: 1.1;
+        }
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(244, 63, 94, 0.12);
+            border: 1px solid var(--card-border);
+            margin-top: 10px;
+        }
+        .tabbar {
+            display: none;
+            gap: 8px;
+            margin: 0 0 12px;
+            padding: 4px;
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            background: rgba(17, 24, 39, 0.85);
+        }
+        .tabbar::-webkit-scrollbar {
+            height: 6px;
+        }
+        .tabbar::-webkit-scrollbar-thumb {
+            background: rgba(244, 63, 94, 0.45);
+            border-radius: 999px;
+        }
+        .tab-btn {
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            color: var(--muted);
+            background: transparent;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-weight: 700;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            color: #111827;
+            border-color: transparent;
+            background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        }
+        .grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 14px;
+        }
+        .tab-card {
+            display: none;
+        }
+        .tab-card.visible {
+            display: block;
+        }
+        .card h2 {
+            margin: 0 0 10px;
+            font-size: 17px;
+        }
+        .card p.note {
+            margin: -3px 0 10px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .row.stack {
+            flex-direction: column;
+        }
+        input, button, textarea, select {
+            font: inherit;
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            border-radius: 10px;
+            color: var(--text);
+            background: rgba(8, 24, 32, 0.8);
+            padding: 10px 12px;
+        }
+        input, textarea, select { width: 100%; }
+        button {
+            background: linear-gradient(120deg, var(--accent), var(--accent-2));
+            color: #1f2937;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform .2s ease, opacity .2s ease;
+        }
+        button:hover { transform: translateY(-1px); }
+        button.secondary {
+            background: transparent;
+            border: 1px solid var(--card-border);
+            color: var(--text);
+            font-weight: 700;
+        }
+        .checks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .checks label { display: inline-flex; align-items: center; gap: 4px; }
+        .result {
+            background: rgba(5, 17, 24, 0.75);
+            border: 1px solid rgba(248, 250, 252, 0.15);
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 12px;
+            max-height: 420px;
+            overflow: auto;
+            line-height: 1.5;
+        }
+        .report-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+        .report-section { margin-bottom: 10px; }
+        .report-section h4 { margin: 0 0 5px; font-size: 13px; color: var(--muted); }
+        .report-section ul { margin: 0; padding-left: 16px; }
+        .report-section li { margin: 2px 0; }
+        .report-kv { display: grid; grid-template-columns: 190px 1fr; gap: 4px 8px; }
+        .report-kv .k { color: var(--muted); }
+        .report-kv .v code { color: #b9f1e6; }
+        .result a { color: #9de7d8; text-decoration: none; }
+        .result a:hover { text-decoration: underline; }
+        .result-top {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .result-top .left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .result-kind {
+            font-size: 12px;
+            color: var(--muted);
+            border: 1px solid rgba(248, 250, 252, 0.2);
+            border-radius: 999px;
+            padding: 4px 8px;
+        }
+        .report-code {
+            white-space: pre-wrap;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 8px;
+            border-radius: 8px;
+        }
+        .status { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+        .error { color: var(--danger); }
+        #mainSection { display: none; }
+        #adminSection { display: none; }
+        #guestSection { margin-top: 12px; }
+        #bottomNav {
+            display: none;
+        }
+        .bottom-nav {
+            position: fixed;
+            left: 50%;
+            bottom: 10px;
+            transform: translateX(-50%);
+            width: min(980px, 94vw);
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            padding: 8px;
+            border-radius: 16px;
+            border: 1px solid var(--card-border);
+            background: rgba(11, 17, 32, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 40;
+        }
+        .bottom-nav.is-admin {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+        .bottom-nav button {
+            background: transparent;
+            border: 1px solid rgba(244, 63, 94, 0.32);
+            color: var(--muted);
+            font-size: 13px;
+            padding: 10px 8px;
+        }
+        .bottom-nav button.active {
+            background: linear-gradient(120deg, var(--accent), var(--accent-2));
+            color: #111827;
+            border-color: transparent;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th, td {
+            border-bottom: 1px solid rgba(248, 250, 252, 0.15);
+            text-align: left;
+            padding: 6px;
+        }
+        .target-results {
+            display: grid;
+            gap: 8px;
+        }
+        .target-card {
+            border: 1px solid rgba(248, 250, 252, 0.16);
+            border-radius: 10px;
+            padding: 10px;
+            background: rgba(15, 23, 42, 0.75);
+        }
+        .target-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .target-card-head h5 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 800;
+        }
+        .target-chip {
+            border-radius: 999px;
+            font-size: 10px;
+            padding: 3px 8px;
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            color: var(--muted);
+            white-space: nowrap;
+        }
+        .target-chip.vip {
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.45);
+        }
+        .target-inline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .target-inline span {
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 11px;
+            color: #dbeafe;
+        }
+        @media (max-width: 840px) {
+            .grid { grid-template-columns: 1fr; }
+            .home-actions button {
+                min-width: 0;
+                flex: 1;
+            }
+            .result-top {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .result-top .left {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <section id="homeScreen" class="screen active">
+            <section class="hero">
+                <h1>Spam Apps DEVELOPER KIZARU</h1>
+                <p>Функции бота в Telegram Mini App: номер, мессенджеры, ФССП, фото, Telegram-каталог, отчёт 767, источники и заказы.</p>
+                <div class="badge" id="sessionBadge">Проверка сессии...</div>
+            </section>
+
+            <section class="card home-stack">
+                <h2>Старт</h2>
+                <p class="note">Нижнее меню: Главная, Функции и Профиль. Результаты всегда открываются на отдельном экране.</p>
+                <div class="home-actions">
+                    <button id="homeOpenFunctionsBtn" type="button">Открыть функции</button>
+                    <button id="homeOpenProfileBtn" class="secondary" type="button">Открыть профиль</button>
+                </div>
+            </section>
+        </section>
+
+        <section id="functionsScreen" class="screen">
+        <section id="tabsSection" class="tabbar">
+            <button class="tab-btn active" type="button" data-tab="all">🏠 Главное меню</button>
+            <button class="tab-btn" type="button" data-tab="target">🎯 Целевая система поиска</button>
+            <button class="tab-btn" type="button" data-tab="messenger">📲 Номер для мессенджеров</button>
+            <button class="tab-btn" type="button" data-tab="mychats">📬 Забив номера</button>
+            <button class="tab-btn" type="button" data-tab="photo">🖼 Поиск по фото</button>
+            <button class="tab-btn" type="button" data-tab="tgcatalog">💬 Каталог Telegram</button>
+            <button class="tab-btn" type="button" data-tab="report767">📊 Отчёт 767</button>
+            <button class="tab-btn" type="button" data-tab="sources">📦 Источники</button>
+            <button class="tab-btn" type="button" data-tab="green">🟢 Заказ источников</button>
+            <button class="tab-btn" type="button" data-tab="help">ℹ️ Помощь</button>
+            <button class="tab-btn" type="button" data-tab="myid">🆔 Мой ID</button>
+            <button class="tab-btn" id="adminTabBtn" type="button" data-tab="admin" style="display:none;">🛡 Админ</button>
+        </section>
+
+        <section id="mainSection" class="grid">
+            <article class="card tab-card" data-tab="target">
+                <h2>Целевая система поиска</h2>
+                <p class="note">Выберите одну из 14 функций поиска и введите запрос.</p>
+                <div class="row stack">
+                    <select id="targetTypeSelect"></select>
+                    <input id="targetQueryInput" placeholder="Запрос (номер, ФИО, username, email, ИНН и т.д.)">
+                    <div class="row">
+                        <button id="targetSearchBtn" type="button">Искать</button>
+                        <button class="secondary" id="targetBalanceBtn" type="button">Баланс</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="photo">
+                <h2>Поиск и улучшение фото</h2>
+                <p class="note">Загрузите фото для поиска и улучшения качества.</p>
+                <div class="row stack">
+                    <input type="file" id="photoInput" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp">
+                    <button id="photoBtn">Анализ фото</button>
+                    <button class="secondary" id="photoEnhanceBtn">Улучшить фото</button>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="messenger">
+                <h2>Номер для мессенджеров</h2>
+                <p class="note">Выберите мессенджер. Далее откроется окно с номером для покупки, статусом SMS и действиями.</p>
+                <div class="row">
+                    <button id="messengerTelegramBtn" type="button">Telegram</button>
+                    <button id="messengerMaxBtn" type="button">MAX</button>
+                    <button id="messengerWhatsappBtn" type="button">WhatsApp</button>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="mychats">
+                <h2>Забить номер в системе</h2>
+                <p class="note">Проверка номера в системе компании.</p>
+                <div class="row stack">
+                    <input id="myChatsPhoneInput" placeholder="+79001234567">
+                    <button id="myChatsBtn">Проверить</button>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="help">
+                <h2>Помощь</h2>
+                <p class="note">Краткая справка по всем режимам и кнопкам.</p>
+                <div class="row">
+                    <button id="helpBtn">Показать помощь</button>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="myid">
+                <h2>Мой ID</h2>
+                <p class="note">Показывает ваш Telegram user_id и username из сессии Mini App.</p>
+                <div class="row">
+                    <button id="myIdBtn">Показать мой ID</button>
+                </div>
+            </article>
+        </section>
+
+        <section id="adminSection" class="grid" style="margin-top:12px;">
+            <article class="card tab-card" data-tab="service admin">
+                <h2>Анализ группы</h2>
+                <p class="note">Нужны TG_USER_API_ID, TG_USER_API_HASH и авторизованная Telethon сессия.</p>
+                <div class="row">
+                    <input id="groupRefInput" placeholder="@chat_or_link">
+                    <input id="groupLimitInput" value="500" style="max-width:110px;">
+                    <button id="groupBtn">Скан</button>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="service admin">
+                <h2>Фильтры слов</h2>
+                <div class="row">
+                    <input id="filterInput" placeholder="мошенник">
+                    <button id="filterAddBtn">Добавить</button>
+                </div>
+                <div class="row">
+                    <input id="filterRemoveInput" placeholder="id или слово">
+                    <button class="secondary" id="filterRemoveBtn">Удалить</button>
+                    <button class="secondary" id="filterReloadBtn">Обновить</button>
+                </div>
+                <div style="max-height:220px;overflow:auto;">
+                    <table>
+                        <thead><tr><th>ID</th><th>Фильтр</th><th>Создан</th></tr></thead>
+                        <tbody id="filtersTable"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="tgcatalog">
+                <h2>Каталог Telegram</h2>
+                <div class="row">
+                    <input id="tgCatalogQueryInput" placeholder="поиск в каталоге">
+                    <input id="tgCatalogSourceInput" placeholder="all/chat/channel" value="all" style="max-width:140px;">
+                    <button id="tgCatalogSearchBtn">Искать</button>
+                </div>
+                <div class="row">
+                    <button class="secondary" id="tgCatalogTopBtn">Top</button>
+                    <button class="secondary" id="tgCatalogRandomBtn">Random</button>
+                    <button class="secondary" id="tgCatalogStatsBtn">Stats</button>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="sources admin">
+                <h2>Источники</h2>
+                <div class="row">
+                    <input id="sourceNameInput" placeholder="Название">
+                    <input id="sourceValueInput" placeholder="Ссылка/значение">
+                    <button id="sourceAddBtn">Добавить</button>
+                </div>
+                <div class="row">
+                    <input id="sourceRemoveInput" placeholder="ID для удаления">
+                    <button class="secondary" id="sourceRemoveBtn">Удалить</button>
+                    <button class="secondary" id="sourceReloadBtn">Обновить</button>
+                </div>
+                <div style="max-height:220px;overflow:auto;">
+                    <table>
+                        <thead><tr><th>ID</th><th>Название</th><th>Значение</th><th>Кто</th><th>Создан</th></tr></thead>
+                        <tbody id="sourcesTable"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="report767">
+                <h2>Отчёт 767</h2>
+                <p class="note">Что заполнять: <b>Команда</b> и <b>Автор</b>, затем числовые поля отчёта за смену.</p>
+                <p class="note"><b>done</b> — выполнено, <b>plan</b> — план, <b>numbers</b> — номеров к проверке, <b>positives</b> — позитивы, <b>active</b> — актив, <b>vbros</b> — вброс, <b>predlog</b> — предложка, <b>soglasiy</b> — согласия.</p>
+                <div class="row">
+                    <input id="reportTeamInput" placeholder="Команда (обязательно)">
+                    <input id="reportAuthorInput" placeholder="Автор">
+                </div>
+                <div class="row">
+                    <input id="reportDoneInput" placeholder="done" value="0" style="max-width:90px;">
+                    <input id="reportPlanInput" placeholder="plan" value="0" style="max-width:90px;">
+                    <input id="reportNumsInput" placeholder="numbers" value="0" style="max-width:90px;">
+                </div>
+                <div class="row">
+                    <input id="reportPosInput" placeholder="positives" value="0" style="max-width:90px;">
+                    <input id="reportActiveInput" placeholder="active" value="0" style="max-width:90px;">
+                    <input id="reportVbrosInput" placeholder="vbros" value="0" style="max-width:90px;">
+                    <input id="reportPredlogInput" placeholder="predlog" value="0" style="max-width:90px;">
+                    <input id="reportSoglasiyInput" placeholder="soglasiy" value="0" style="max-width:90px;">
+                </div>
+                <div class="row">
+                    <button id="reportSubmitBtn">Отправить отчёт</button>
+                    <button class="secondary" id="reportStatsBtn">Показать статистику</button>
+                </div>
+            </article>
+
+            <article class="card tab-card" data-tab="green">
+                <h2>Заказ источников</h2>
+                <div class="row">
+                    <input id="greenDonorInput" placeholder="Ссылка донора">
+                </div>
+                <div class="row">
+                    <input id="greenFullNameInput" placeholder="ФИО">
+                    <input id="greenBirthInput" placeholder="YYYY-MM-DD">
+                </div>
+                <div class="row">
+                    <input id="greenCountInput" placeholder="Кол-во" value="1" style="max-width:110px;">
+                    <input id="greenVkInput" placeholder="VK источник">
+                </div>
+                <div class="row">
+                    <button id="greenSubmitBtn">Создать заказ</button>
+                    <button class="secondary" id="greenListBtn">Список заказов</button>
+                </div>
+            </article>
+        </section>
+
+        <section id="guestSection" class="card">
+            <div class="status error">Сессия Mini App не подтверждена.</div>
+            <div class="result">Откройте интерфейс из Telegram-бота, чтобы получить доступ ко всем функциям.</div>
+        </section>
+        </section>
+
+        <section id="resultScreen" class="card screen" style="margin-top:12px;">
+            <div class="result-top">
+                <div class="left">
+                    <button class="secondary" id="resultBackBtn" type="button">⬅️ К функциям</button>
+                    <span class="result-kind" id="resultKind">Результат</span>
+                </div>
+                <div class="left">
+                    <button class="secondary" id="resultOpenBrowserBtn" type="button">🌐 Отчёт в браузере</button>
+                    <button class="secondary" id="resultHomeBtn" type="button">🏠 На главную</button>
+                </div>
+            </div>
+            <div class="status" id="status">Готово.</div>
+            <div id="result" class="result">Ожидаю действие.</div>
+        </section>
+
+        <section id="profileScreen" class="screen">
+            <article class="card">
+                <h2>Профиль</h2>
+                <p class="note">Данные текущей Mini App сессии и быстрые действия.</p>
+                <div class="report-kv">
+                    <div class="k">Статус</div><div class="v" id="profileAuth">—</div>
+                    <div class="k">Username</div><div class="v"><code id="profileUsername">—</code></div>
+                    <div class="k">User ID</div><div class="v"><code id="profileUserId">—</code></div>
+                    <div class="k">Роль</div><div class="v" id="profileRole">—</div>
+                </div>
+                <div class="row">
+                    <button id="profileOpenFunctionsBtn" type="button">Открыть функции</button>
+                    <button id="profileMyIdBtn" class="secondary" type="button">Показать ID в результате</button>
+                    <button id="profileRefreshBtn" class="secondary" type="button">Обновить сессию</button>
+                </div>
+            </article>
+        </section>
+
+        <nav id="bottomNav" class="bottom-nav">
+            <button id="navHomeBtn" class="active" type="button">🏠 Главная</button>
+            <button id="navFunctionsBtn" type="button">📚 Функции</button>
+            <button id="navProfileBtn" type="button">👤 Профиль</button>
+            <button id="navAdminBtn" type="button" style="display:none;">🛡 Админ</button>
+        </nav>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+        const initData = tg ? tg.initData : "";
+        const basePath = (() => {
+            const marker = "/miniapp";
+            const p = window.location.pathname || "";
+            const idx = p.indexOf(marker);
+            return idx >= 0 ? p.slice(0, idx) : "";
+        })();
+        const withBase = (path) => {
+            if (!path) return basePath || "";
+            if (path.startsWith("http://") || path.startsWith("https://")) return path;
+            if (path.startsWith("?") || path.startsWith("#")) {
+                return `${window.location.pathname}${path}`;
+            }
+            const normalized = path.startsWith("/") ? path : `/${path}`;
+            return `${basePath}${normalized}`;
+        };
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+
+        const statusEl = document.getElementById("status");
+        const resultEl = document.getElementById("result");
+        const resultKindEl = document.getElementById("resultKind");
+        const sessionBadge = document.getElementById("sessionBadge");
+        const homeScreen = document.getElementById("homeScreen");
+        const functionsScreen = document.getElementById("functionsScreen");
+        const resultScreen = document.getElementById("resultScreen");
+        const profileScreen = document.getElementById("profileScreen");
+        const mainSection = document.getElementById("mainSection");
+        const adminSection = document.getElementById("adminSection");
+        const guestSection = document.getElementById("guestSection");
+        const tabsSection = document.getElementById("tabsSection");
+        const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+        const tabCards = Array.from(document.querySelectorAll(".tab-card"));
+        const filtersTable = document.getElementById("filtersTable");
+        const sourcesTable = document.getElementById("sourcesTable");
+        const bottomNav = document.getElementById("bottomNav");
+        const navHomeBtn = document.getElementById("navHomeBtn");
+        const navFunctionsBtn = document.getElementById("navFunctionsBtn");
+        const navProfileBtn = document.getElementById("navProfileBtn");
+        const navAdminBtn = document.getElementById("navAdminBtn");
+        const adminTabBtn = document.getElementById("adminTabBtn");
+        const profileAuthEl = document.getElementById("profileAuth");
+        const profileUsernameEl = document.getElementById("profileUsername");
+        const profileUserIdEl = document.getElementById("profileUserId");
+        const profileRoleEl = document.getElementById("profileRole");
+        let isAdminSession = false;
+        let activeTab = "all";
+        let sessionUser = null;
+        let currentScreen = "home";
+        let currentActivationId = "";
+        let currentResultHtml = "";
+        let currentResultBrowserUrl = "";
+        const TARGET_TYPE_LABELS = {
+            phone: "Телефон",
+            full_name: "ФИО",
+            username: "Никнейм",
+            email: "Email",
+            telegram: "Telegram",
+            whatsapp: "WhatsApp",
+            instagram: "Instagram",
+            vk: "ВКонтакте",
+            tiktok: "TikTok",
+            facebook: "Facebook",
+            car_plate: "Госномер авто",
+            passport: "Паспорт",
+            inn: "ИНН",
+            ip_address: "IP-адрес",
+        };
+
+        const esc = (v) => String(v ?? "—")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+
+        const link = (url, label) => url
+            ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label || url)}</a>`
+            : "—";
+
+        function setStatus(text, isError = false) {
+            statusEl.textContent = text;
+            statusEl.classList.toggle("error", isError);
+        }
+
+        function ensureAdmin() {
+            // Интерфейс открыт для всех авторизованных пользователей Mini App.
+            return true;
+        }
+
+        function updateBottomNav(screen) {
+            navHomeBtn.classList.toggle("active", screen === "home");
+            navFunctionsBtn.classList.toggle("active", screen === "functions" || screen === "result");
+            navProfileBtn.classList.toggle("active", screen === "profile");
+            navAdminBtn.classList.toggle("active", screen === "admin");
+        }
+
+        function showScreen(screen) {
+            if (screen === "admin" && !isAdminSession) {
+                screen = "functions";
+            }
+            currentScreen = screen;
+            homeScreen.classList.toggle("active", screen === "home");
+            functionsScreen.classList.toggle("active", screen === "functions" || screen === "admin");
+            resultScreen.classList.toggle("active", screen === "result");
+            profileScreen.classList.toggle("active", screen === "profile");
+            if (screen === "admin") {
+                setActiveTab("admin");
+            } else if (screen === "functions" && activeTab === "admin") {
+                setActiveTab("all");
+            }
+            updateBottomNav(screen);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function stripHiddenFields(value) {
+            if (Array.isArray(value)) {
+                return value.map(stripHiddenFields);
+            }
+            if (value && typeof value === "object") {
+                const out = {};
+                for (const [k, v] of Object.entries(value)) {
+                    const key = String(k || "").toLowerCase();
+                    if (key === "full_text") {
+                        continue;
+                    }
+                    out[k] = stripHiddenFields(v);
+                }
+                return out;
+            }
+            return value;
+        }
+
+        function pickResultBrowserUrl(data) {
+            const direct = [
+                data && data.report_url,
+                data && data.url,
+                data && data.download_url,
+                data && data.pdf_url,
+                data && data.result_url,
+                data && data.report && data.report.url,
+            ].find((x) => typeof x === "string" && x.trim());
+            return direct ? withBase(String(direct).trim()) : "";
+        }
+
+        function openExternalLink(url) {
+            if (!url) return;
+            const localScheme = String(url).startsWith("blob:") || String(url).startsWith("data:");
+            if (localScheme) {
+                window.open(url, "_blank", "noopener,noreferrer");
+                return;
+            }
+            if (tg && typeof tg.openLink === "function") {
+                tg.openLink(url, { try_instant_view: false });
+            } else {
+                window.open(url, "_blank", "noopener,noreferrer");
+            }
+        }
+
+        function restoreSavedResultFromStorage() {
+            const query = new URLSearchParams(window.location.search || "");
+            if (query.get("view") !== "result") {
+                return false;
+            }
+            const raw = window.localStorage.getItem("miniapp:last-report");
+            if (!raw) {
+                return false;
+            }
+            try {
+                const saved = JSON.parse(raw) || {};
+                const html = String(saved.html || "");
+                if (!html) {
+                    return false;
+                }
+                resultKindEl.textContent = String(saved.kind || "📄 Результат");
+                resultEl.innerHTML = html;
+                currentResultHtml = html;
+                currentResultBrowserUrl = String(saved.browserUrl || "");
+                const openBtn = document.getElementById("resultOpenBrowserBtn");
+                if (openBtn) {
+                    openBtn.disabled = false;
+                    openBtn.textContent = currentResultBrowserUrl ? "🌐 Отчёт в браузере" : "🌐 Открыть результат";
+                }
+                showScreen("result");
+                setStatus("Открыт сохранённый результат.");
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function openResultInBrowser() {
+            if (currentResultBrowserUrl) {
+                openExternalLink(currentResultBrowserUrl);
+                return;
+            }
+            if (currentResultHtml && tg && typeof tg.openLink === "function") {
+                try {
+                    window.localStorage.setItem("miniapp:last-report", JSON.stringify({
+                        html: currentResultHtml,
+                        kind: resultKindEl ? resultKindEl.textContent : "📄 Результат",
+                        browserUrl: "",
+                        savedAt: Date.now(),
+                    }));
+                    openExternalLink(withBase("/miniapp?view=result"));
+                    return;
+                } catch (_) {
+                    // Fallback below.
+                }
+            }
+            const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Отчёт</title></head><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;background:#0b1120;color:#f8fafc;">${currentResultHtml || "<pre>Нет данных</pre>"}</body></html>`;
+            const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            openExternalLink(url);
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        }
+
+        function updateProfilePanel() {
+            const user = sessionUser || {};
+            profileAuthEl.textContent = sessionUser ? "Авторизован" : "Не авторизован";
+            profileUsernameEl.textContent = user.username ? `@${user.username}` : "—";
+            profileUserIdEl.textContent = user.id ? String(user.id) : "—";
+            profileRoleEl.textContent = isAdminSession ? "Админ" : "Пользователь";
+        }
+
+        function setActiveTab(tab) {
+            activeTab = tab;
+            for (const btn of tabButtons) {
+                btn.classList.toggle("active", btn.dataset.tab === tab);
+            }
+            for (const card of tabCards) {
+                const tags = (card.dataset.tab || "").split(/\s+/).filter(Boolean);
+                const visibleByTab = tab === "all" || tags.includes(tab);
+                const adminOnly = tags.includes("admin");
+                const visible = visibleByTab && (isAdminSession || !adminOnly);
+                card.classList.toggle("visible", visible);
+            }
+        }
+
+        function renderRaw(data) {
+            return `<div class="report-title">JSON</div><div class="report-code">${esc(JSON.stringify(data, null, 2))}</div>`;
+        }
+
+        function renderPhoneReport(payload) {
+            const basic = (((payload || {}).results || {}).basic) || {};
+            const owner = (((payload || {}).results || {}).owner) || {};
+            const breaches = (((payload || {}).results || {}).data_breaches) || {};
+            const social = (((payload || {}).results || {}).social_platforms) || {};
+            const ownerRows = (owner.candidates || []).slice(0, 6).map((x) =>
+                `<li>${esc(x.name || "—")} | ${esc(x.city || "—")} | ${esc(x.category || "—")}</li>`
+            ).join("");
+            const socialRows = Object.entries(social).slice(0, 18).map(([k, v]) => {
+                const item = v || {};
+                const u = item.search_url || item.direct_url || item.chat_url || item.profile_url || "";
+                return `<li><b>${esc(item.platform || k)}:</b> ${u ? link(u, u) : "—"}</li>`;
+            }).join("");
+            return `
+                <div class="report-title">Отчёт по номеру</div>
+                <div class="report-section">
+                    <div class="report-kv">
+                        <div class="k">Ввод</div><div class="v"><code>${esc(payload.input)}</code></div>
+                        <div class="k">Формат E.164</div><div class="v"><code>${esc(payload.formatted)}</code></div>
+                        <div class="k">Страна</div><div class="v">${esc(basic.country)} (${esc(basic.region_code)})</div>
+                        <div class="k">Оператор</div><div class="v">${esc(basic.carrier)}</div>
+                        <div class="k">Intl формат</div><div class="v"><code>${esc(basic.international_format)}</code></div>
+                    </div>
+                </div>
+                <div class="report-section">
+                    <h4>Локальный владелец/справочник</h4>
+                    ${(owner.found && ownerRows) ? `<ul>${ownerRows}</ul>` : "Совпадений не найдено."}
+                </div>
+                <div class="report-section">
+                    <h4>Утечки</h4>
+                    Найдено: <b>${breaches.found ? "да" : "нет"}</b>, записей: <b>${esc(breaches.matches || 0)}</b>
+                </div>
+                <div class="report-section">
+                    <h4>Социальные платформы</h4>
+                    ${socialRows ? `<ul>${socialRows}</ul>` : "Не запрошено."}
+                </div>
+            `;
+        }
+
+        function renderIpReport(payload) {
+            return `
+                <div class="report-title">IP отчёт</div>
+                <div class="report-kv">
+                    <div class="k">IP</div><div class="v"><code>${esc(payload.ip)}</code></div>
+                    <div class="k">Страна</div><div class="v">${esc(payload.country)}</div>
+                    <div class="k">Город</div><div class="v">${esc(payload.city)}</div>
+                    <div class="k">Провайдер/ASN</div><div class="v">${esc(payload.org || payload.asn || "—")}</div>
+                    <div class="k">Часовой пояс</div><div class="v">${esc(payload.timezone)}</div>
+                </div>
+            `;
+        }
+
+        function renderEmailReport(payload) {
+            return `
+                <div class="report-title">Email отчёт</div>
+                <div class="report-kv">
+                    <div class="k">Email</div><div class="v"><code>${esc(payload.email)}</code></div>
+                    <div class="k">Формат</div><div class="v">${payload.valid_format ? "OK" : "Ошибка"}</div>
+                    <div class="k">Домен</div><div class="v"><code>${esc(payload.domain)}</code></div>
+                    <div class="k">MX записи</div><div class="v">${payload.has_mx ? "Есть" : "Нет/неизвестно"}</div>
+                </div>
+            `;
+        }
+
+        function renderFsspReport(payload) {
+            const items = (payload.items || []).slice(0, 8).map((x, i) => `
+                <li>
+                    <b>${i + 1})</b> ИП: <code>${esc(x.ip_num || x.ipNumber || "—")}</code>,
+                    сумма: <b>${esc(x.ip_sum || x.sum || "—")}</b>,
+                    статус: ${esc(x.ip_exec_prist_name || x.status || "—")}
+                </li>
+            `).join("");
+            return `
+                <div class="report-title">ФССП отчёт</div>
+                <div class="report-kv">
+                    <div class="k">ФИО</div><div class="v"><code>${esc((payload.parsed || {}).fio)}</code></div>
+                    <div class="k">Регион</div><div class="v">${esc((payload.parsed || {}).region)}</div>
+                    <div class="k">Найдено</div><div class="v"><b>${esc(payload.count || 0)}</b></div>
+                </div>
+                <div class="report-section">
+                    <h4>Производства</h4>
+                    ${items ? `<ul>${items}</ul>` : "Записей не найдено."}
+                </div>
+            `;
+        }
+
+        function renderPhotoReport(payload) {
+            const meta = ((payload.results || {}).metadata) || {};
+            const engines = ((payload.results || {}).image_search) || {};
+            const rows = Object.entries(engines).map(([k, v]) => {
+                const item = v || {};
+                return `<li><b>${esc(item.engine || k)}:</b> ${link(item.search_url || "", item.search_url || "ссылка")} ${item.upload_url ? `| upload: ${link(item.upload_url, item.upload_url)}` : ""}</li>`;
+            }).join("");
+            return `
+                <div class="report-title">Отчёт по фото</div>
+                <div class="report-kv">
+                    <div class="k">Файл</div><div class="v">${esc(payload.filename || meta.filename || "—")}</div>
+                    <div class="k">Размер</div><div class="v">${esc(meta.size || "—")}</div>
+                    <div class="k">Формат</div><div class="v">${esc(meta.format || "—")}</div>
+                </div>
+                <div class="report-section">
+                    <h4>Reverse image search</h4>
+                    ${rows ? `<ul>${rows}</ul>` : "Движки не вернули ссылки."}
+                </div>
+            `;
+        }
+
+        function renderGroupReport(payload) {
+            const root = payload.result || payload;
+            const members = (root.top_senders || root.participants || []).slice(0, 20).map((x, i) =>
+                `<li>${i + 1}. ${esc(x.label || x.name || "—")} — <b>${esc(x.count || 0)}</b></li>`
+            ).join("");
+            const kw = root.keyword_hits || root.keywords || {};
+            const kwRows = Object.entries(kw).map(([k, v]) => `<li><code>${esc(k)}</code>: <b>${esc(v)}</b></li>`).join("");
+            return `
+                <div class="report-title">Аналитика Telegram-группы</div>
+                <div class="report-kv">
+                    <div class="k">Чат</div><div class="v"><code>${esc(root.chat || root.chat_title || "—")}</code></div>
+                    <div class="k">Источник</div><div class="v"><code>${esc(root.chat_ref || "—")}</code></div>
+                    <div class="k">Просмотрено</div><div class="v"><b>${esc(root.scanned || 0)}</b></div>
+                    <div class="k">Текстовых</div><div class="v"><b>${esc(root.text_messages || 0)}</b></div>
+                </div>
+                <div class="report-section"><h4>Топ участников</h4>${members ? `<ul>${members}</ul>` : "Нет данных."}</div>
+                <div class="report-section"><h4>Фильтры слов</h4>${kwRows ? `<ul>${kwRows}</ul>` : "Фильтры не заданы."}</div>
+            `;
+        }
+
+        function renderTgSearchReport(payload) {
+            const links = Object.entries(payload.links || {}).map(([k, v]) =>
+                `<li><b>${esc(k)}</b>: ${link(v, v)}</li>`
+            ).join("");
+            const phones = (payload.phone_candidates || []).slice(0, 20).map((x) =>
+                `<li><code>${esc(x.phone || x)}</code></li>`
+            ).join("");
+            return `
+                <div class="report-title">Telegram username: @${esc(payload.username || "")}</div>
+                <div class="report-section"><h4>Ссылки</h4>${links ? `<ul>${links}</ul>` : "Нет данных."}</div>
+                <div class="report-section"><h4>Кандидаты телефонов</h4>${phones ? `<ul>${phones}</ul>` : "Нет совпадений."}</div>
+            `;
+        }
+
+        function renderCatalogReport(payload) {
+            const rows = (payload.items || []).slice(0, 30).map((x, i) =>
+                `<li>${i + 1}. <b>${esc(x.title || x.name || "—")}</b> | ${esc(x.source_type || x.type || "—")} | ${esc(x.link || x.url || "—")}</li>`
+            ).join("");
+            const item = payload.item || null;
+            const randomRow = item
+                ? `<li><b>${esc(item.title || item.name || "—")}</b> | ${esc(item.source_type || item.type || "—")} | ${esc(item.link || item.url || "—")}</li>`
+                : "";
+            return `
+                <div class="report-title">Telegram каталог</div>
+                <div class="report-section">${rows ? `<ul>${rows}</ul>` : (randomRow ? `<ul>${randomRow}</ul>` : renderRaw(payload))}</div>
+            `;
+        }
+
+        function renderReport767Stats(payload) {
+            const teams = (payload.teams || []).map((x, i) =>
+                `<li>${i + 1}. <b>${esc(x.team || "—")}</b>: done=${esc(x.reports_done || 0)}, plan=${esc(x.reports_plan || 0)}, positives=${esc(x.positives || 0)}</li>`
+            ).join("");
+            return `
+                <div class="report-title">Статистика отчёта 767</div>
+                <div class="report-section"><h4>По командам</h4>${teams ? `<ul>${teams}</ul>` : "Нет данных."}</div>
+                <div class="report-section"><h4>Итого</h4><div class="report-code">${esc(JSON.stringify(payload.total || {}, null, 2))}</div></div>
+            `;
+        }
+
+        function renderGreenOrders(payload) {
+            const items = (payload.items || []).slice(0, 50).map((x, i) =>
+                `<li>${i + 1}. ${esc(x.full_name || "—")} | ${esc(x.birth_date || "—")} | ${esc(x.count || 0)} | ${esc(x.vk_source || "—")}</li>`
+            ).join("");
+            return `
+                <div class="report-title">Заказы источников</div>
+                <div class="report-section">${items ? `<ul>${items}</ul>` : "Заказов пока нет."}</div>
+            `;
+        }
+
+        function targetSourceLabel(value) {
+            const txt = String(value || "").trim();
+            if (!txt || txt.toLowerCase() === "undefined" || txt.toLowerCase() === "null") {
+                return "Источник не указан";
+            }
+            return txt;
+        }
+
+        function targetSexLabel(value) {
+            const normalized = String(value ?? "").trim();
+            if (normalized === "1") return "Мужской";
+            if (normalized === "2") return "Женский";
+            return normalized || "";
+        }
+
+        function targetParseRawMetadata(raw) {
+            const out = {};
+            const rows = Array.isArray(raw) ? raw : [];
+            for (const item of rows) {
+                if (typeof item !== "string") continue;
+                try {
+                    const obj = JSON.parse(item);
+                    if (obj && typeof obj === "object") {
+                        for (const [k, v] of Object.entries(obj)) {
+                            const key = String(k || "").trim();
+                            if (!key || out[key] !== undefined) continue;
+                            out[key] = v;
+                        }
+                    }
+                } catch (_) {}
+            }
+            return out;
+        }
+
+        function targetRenderRecord(entry, index) {
+            const item = entry && typeof entry === "object" ? entry : {};
+            const data = item.data && typeof item.data === "object" ? item.data : {};
+            const source = targetSourceLabel(item.source || data.db_name || data.data_provider);
+            const isVip = !!data.is_vip;
+            const works = Array.isArray(data.works) ? data.works : [];
+            const educations = Array.isArray(data.educations) ? data.educations : [];
+            const meta = targetParseRawMetadata(data.raw_metadata);
+            const metaRows = Object.entries(meta).slice(0, 6);
+            const facts = [];
+            const pushFact = (label, value) => {
+                const txt = String(value ?? "").trim();
+                if (!txt) return;
+                facts.push(`<div class="k">${esc(label)}</div><div class="v">${esc(txt)}</div>`);
+            };
+
+            pushFact("ФИО", data.name || data.full_name || data.fio);
+            pushFact("Телефон", data.phone || data.msisdn || data.mobile);
+            pushFact("Дата рождения", data.birth_date || data.birthday || data.dob);
+            pushFact("Email", data.email);
+            pushFact("Адрес", data.address);
+            pushFact("Регион", data.phone_region || data.region);
+            pushFact("Оператор", data.phone_carrier || data.carrier);
+            pushFact("Пол", targetSexLabel(data.sex));
+            pushFact("Актуальность", data.actuality || data.updated_at);
+
+            const workTags = works
+                .map((x) => `${String((x && x.company) || "").trim()} ${String((x && x.post) || "").trim()}`.trim())
+                .filter(Boolean)
+                .slice(0, 5)
+                .map((x) => `<span>${esc(x)}</span>`)
+                .join("");
+
+            const eduTags = educations
+                .map((x) => String((x && x.title) || "").trim())
+                .filter(Boolean)
+                .slice(0, 5)
+                .map((x) => `<span>${esc(x)}</span>`)
+                .join("");
+
+            const metaTags = metaRows
+                .map(([k, v]) => `<span>${esc(k)}: ${esc(v)}</span>`)
+                .join("");
+
+            return `
+                <article class="target-card">
+                    <div class="target-card-head">
+                        <h5>${index + 1}. ${esc(source)}</h5>
+                        ${isVip ? '<span class="target-chip vip">VIP</span>' : '<span class="target-chip">Запись</span>'}
+                    </div>
+                    ${facts.length ? `<div class="report-kv">${facts.join("")}</div>` : '<div class="report-section">Минимум данных в записи.</div>'}
+                    ${workTags ? `<div class="report-section"><h4>Работа</h4><div class="target-inline">${workTags}</div></div>` : ""}
+                    ${eduTags ? `<div class="report-section"><h4>Образование</h4><div class="target-inline">${eduTags}</div></div>` : ""}
+                    ${metaTags ? `<div class="report-section"><h4>Дополнительно</h4><div class="target-inline">${metaTags}</div></div>` : ""}
+                </article>
+            `;
+        }
+
+        function renderTargetSearch(payload) {
+            const sources = (payload.sources || []).slice(0, 20).map((x, i) =>
+                `<li>${i + 1}. <b>${esc(targetSourceLabel(x.source || "Источник"))}</b>: ${esc(x.count || 0)}</li>`
+            ).join("");
+            const links = (payload.links || []).slice(0, 20).map((x, i) =>
+                `<li>${i + 1}. <b>${esc(x.title || "Источник")}</b>: ${link(x.url || "", x.url || "ссылка")}</li>`
+            ).join("");
+            const items = (payload.items || []).slice(0, 30).map((x, i) => targetRenderRecord(x, i)).join("");
+            return `
+                <div class="report-title">Целевая система поиска</div>
+                <div class="report-kv">
+                    <div class="k">Функция</div><div class="v"><b>${esc(payload.search_type_label || payload.search_type || "—")}</b></div>
+                    <div class="k">Запрос</div><div class="v"><code>${esc(payload.query || "—")}</code></div>
+                    <div class="k">API тип</div><div class="v"><code>${esc(payload.api_type || ((payload.search_options && payload.search_options[0] && payload.search_options[0].type) || "—"))}</code></div>
+                    <div class="k">Найдено записей</div><div class="v"><b>${esc(payload.records || payload.items_count || 0)}</b></div>
+                    <div class="k">Search ID</div><div class="v"><code>${esc(payload.search_id || "—")}</code></div>
+                </div>
+                ${sources ? `<div class="report-section"><h4>Источники</h4><ul>${sources}</ul></div>` : ""}
+                ${items ? `<div class="report-section"><h4>Записи (первые 30)</h4><div class="target-results">${items}</div></div>` : ""}
+                ${links ? `<div class="report-section"><h4>Ссылки</h4><ul>${links}</ul></div>` : ""}
+                ${(!items && !links) ? `<div class="report-section">Данных не найдено.</div>` : ""}
+            `;
+        }
+
+        function renderTargetBalance(payload) {
+            return `
+                <div class="report-title">Целевая система поиска: баланс</div>
+                <div class="report-kv">
+                    <div class="k">Провайдер</div><div class="v">${esc(payload.provider || "Целевая система поиска")}</div>
+                    <div class="k">Доступно функций</div><div class="v"><b>${esc(payload.available_types || 14)}</b></div>
+                    <div class="k">Баланс</div><div class="v"><b>${esc(payload.balance || "—")}</b></div>
+                    <div class="k">Блокировка с</div><div class="v">${esc(payload.deactivated_at || "—")}</div>
+                    <div class="k">Статус</div><div class="v">${esc(payload.status || "OK")}</div>
+                </div>
+                ${payload.note ? `<div class="report-section">${esc(payload.note)}</div>` : ""}
+            `;
+        }
+
+        function renderSmsActivation(payload) {
+            const activation = (payload && payload.activation) || payload || {};
+            const retryIn = Number(activation.retry_in_seconds || 0);
+            const requestMoreDisabled = retryIn > 0 ? "disabled" : "";
+            const retryHint = retryIn > 0 ? ` (доступно через ${retryIn} сек.)` : "";
+            const stateLabels = {
+                number_acquired: "Номер выдан",
+                waiting_sms: "Ожидание SMS",
+                code_received: "Код получен",
+                request_more_sent: "Запрос на повтор SMS отправлен",
+                success: "Успешно завершено",
+                invalid: "Номер помечен невалидным",
+                cancelled: "Активация отменена",
+            };
+            const stateTitle = stateLabels[String(activation.state || "")] || "Статус обновлён";
+            const smsCode = String(activation.sms_code || "").trim();
+            const message = String((payload && payload.message) || "").trim();
+            return `
+                <div class="report-title">Регистрация: ${esc(stateTitle)}</div>
+                <div class="report-kv">
+                    <div class="k">Мессенджер</div><div class="v"><b>${esc(activation.messenger || "—")}</b></div>
+                    <div class="k">Номер</div><div class="v"><code>${esc(activation.phone_number || "—")}</code></div>
+                    <div class="k">Код SMS</div><div class="v"><code>${esc(smsCode || "ожидается")}</code></div>
+                    <div class="k">Статус провайдера</div><div class="v">${esc(activation.provider_status || "—")}</div>
+                    <div class="k">ID активации</div><div class="v"><code>${esc(activation.local_id || "—")}</code></div>
+                </div>
+                ${message ? `<div class="report-section"><h4>Сообщение</h4><div>${esc(message)}</div></div>` : ""}
+                <div class="report-section">
+                    <h4>Действия</h4>
+                    <div class="row">
+                        <button data-sms-action="poll" type="button">Получить SMS</button>
+                        <button class="secondary" data-sms-action="success" type="button">Успешно</button>
+                    </div>
+                    <div class="row">
+                        <button class="secondary" data-sms-action="request_more" ${requestMoreDisabled} type="button">Запросить ещё${retryHint}</button>
+                        <button class="secondary" data-sms-action="invalid" type="button">Номер невалидный</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHelpReport() {
+            return `
+                <div class="report-title">Справка по функциям</div>
+                <div class="report-section">
+                    <ul>
+                        <li>🎯 Целевая система поиска: 14 функций поиска на русском.</li>
+                        <li>📲 Номер для мессенджеров: выдача номера под регистрацию и управление SMS-кодом.</li>
+                        <li>📬 Забив номера: проверка по вашим чатам и отправка в преднастроенный целевой чат.</li>
+                        <li>🖼 Поиск по фото: анализ фото и улучшение качества.</li>
+                        <li>💬 Каталог Telegram: поиск, Top, Random и статистика.</li>
+                        <li>📊 Отчёт 767, 📦 Источники, 🟢 Заказ у зелёных: рабочие формы.</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        function renderMyIdReport(payload) {
+            const user = (payload && payload.user) || {};
+            return `
+                <div class="report-title">Ваш Telegram ID</div>
+                <div class="report-kv">
+                    <div class="k">User ID</div><div class="v"><code>${esc(user.id || "—")}</code></div>
+                    <div class="k">Username</div><div class="v"><code>${esc(user.username ? "@" + user.username : "—")}</code></div>
+                    <div class="k">Имя</div><div class="v">${esc(user.first_name || "—")} ${esc(user.last_name || "")}</div>
+                </div>
+            `;
+        }
+
+        function renderResult(kind, data) {
+            const clean = stripHiddenFields(data);
+            let html = "";
+            const activation = (clean && clean.activation) || {};
+            if (activation.local_id) {
+                currentActivationId = String(activation.local_id);
+            }
+            if (kind === "phone") html = renderPhoneReport(clean);
+            else if (kind === "ip") html = renderIpReport(clean);
+            else if (kind === "email") html = renderEmailReport(clean);
+            else if (kind === "fssp") html = renderFsspReport(clean);
+            else if (kind === "photo") html = renderPhotoReport(clean);
+            else if (kind === "group") html = renderGroupReport(clean);
+            else if (kind === "tg") html = renderTgSearchReport(clean);
+            else if (kind === "catalog") html = renderCatalogReport(clean);
+            else if (kind === "report767stats") html = renderReport767Stats(clean);
+            else if (kind === "greenorders") html = renderGreenOrders(clean);
+            else if (kind === "target") html = renderTargetSearch(clean);
+            else if (kind === "target_balance") html = renderTargetBalance(clean);
+            else if (kind === "sms_activation") html = renderSmsActivation(clean);
+            else if (kind === "help") html = renderHelpReport();
+            else if (kind === "myid") html = renderMyIdReport(clean);
+            else html = renderRaw(clean);
+            const kindMap = {
+                phone: "📞 Поиск по номеру",
+                ip: "🌐 IP отчёт",
+                email: "📧 Email отчёт",
+                fssp: "⚖️ Проверка ФССП",
+                photo: "🖼 Поиск по фото",
+                group: "👥 Анализ группы",
+                tg: "👤 Ник в Telegram",
+                catalog: "💬 Каталог Telegram",
+                report767stats: "📊 Статистика 767",
+                greenorders: "🟢 Заказы у зелёных",
+                target: "🎯 Целевая система поиска",
+                target_balance: "🎯 Баланс целевой системы",
+                sms_activation: "📲 Номер для мессенджеров",
+                help: "ℹ️ Помощь",
+                myid: "🆔 Мой ID",
+                raw: "📄 Результат",
+            };
+            resultKindEl.textContent = kindMap[kind] || "📄 Результат";
+            resultEl.innerHTML = html;
+            currentResultHtml = html;
+            currentResultBrowserUrl = pickResultBrowserUrl(clean);
+            const openBtn = document.getElementById("resultOpenBrowserBtn");
+            if (openBtn) {
+                openBtn.disabled = false;
+                openBtn.textContent = currentResultBrowserUrl ? "🌐 Отчёт в браузере" : "🌐 Открыть результат";
+            }
+            showScreen("result");
+        }
+
+        async function api(path, opts = {}, withAuth = false) {
+            const headers = Object.assign({}, opts.headers || {});
+            if (withAuth && initData) headers["X-Telegram-Init-Data"] = initData;
+            const response = await fetch(withBase(path), Object.assign({}, opts, { headers }));
+            const payload = await response.json().catch(() => ({ error: "Invalid JSON response" }));
+            if (!response.ok) {
+                throw new Error(payload.error || ("HTTP " + response.status));
+            }
+            return payload;
+        }
+
+        function selectedPhoneTypes() {
+            return ["basic", "owner", "data_breaches"];
+        }
+
+        async function startMessengerActivation(messenger) {
+            setStatus(`Запрашиваю номер для ${messenger}...`);
+            const payload = await api("/api/miniapp/sms_activation/start", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ messenger }),
+            }, true);
+            renderResult("sms_activation", payload);
+            setStatus("Номер получен. Ожидайте SMS или нажмите 'Получить SMS'.");
+        }
+
+        async function smsActivationAction(action) {
+            if (!currentActivationId) {
+                throw new Error("Сначала запросите номер для мессенджера.");
+            }
+            const labels = {
+                poll: "Проверяю SMS...",
+                request_more: "Запрашиваю ещё SMS...",
+                success: "Завершаю активацию...",
+                invalid: "Помечаю номер невалидным...",
+            };
+            setStatus(labels[action] || "Выполняю действие...");
+            const payload = await api(`/api/miniapp/sms_activation/${action}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ activation_id: currentActivationId }),
+            }, true);
+            renderResult("sms_activation", payload);
+            setStatus("Готово.");
+        }
+
+        function fillTargetTypes(items) {
+            const select = document.getElementById("targetTypeSelect");
+            if (!select) return;
+            const rows = (items && items.length ? items : Object.entries(TARGET_TYPE_LABELS).map(([type, label]) => ({ type, label_ru: label })));
+            select.innerHTML = "";
+            for (const item of rows) {
+                const type = String(item.type || "").trim();
+                if (!type) continue;
+                const label = String(item.label_ru || TARGET_TYPE_LABELS[type] || type);
+                const opt = document.createElement("option");
+                opt.value = type;
+                opt.textContent = label;
+                select.appendChild(opt);
+            }
+        }
+
+        async function loadTargetTypes() {
+            try {
+                const payload = await api("/api/miniapp/itp/types", { method: "GET" }, true);
+                fillTargetTypes(payload.items || []);
+            } catch (_) {
+                fillTargetTypes([]);
+            }
+        }
+
+        async function loadSession() {
+            try {
+                const session = await api("/api/miniapp/session", { method: "GET" }, true);
+                if (session.authorized) {
+                    isAdminSession = !!session.is_admin;
+                    const user = session.user || {};
+                    sessionUser = user;
+                    sessionBadge.textContent = `Сессия: ${user.username ? "@" + user.username : (user.id || "unknown")}`;
+                    mainSection.style.display = "grid";
+                    adminSection.style.display = "grid";
+                    tabsSection.style.display = "flex";
+                    guestSection.style.display = "none";
+                    bottomNav.style.display = "grid";
+                    if (isAdminSession) {
+                        navAdminBtn.style.display = "block";
+                        bottomNav.classList.add("is-admin");
+                        adminTabBtn.style.display = "inline-block";
+                    } else {
+                        navAdminBtn.style.display = "none";
+                        bottomNav.classList.remove("is-admin");
+                        adminTabBtn.style.display = "none";
+                        if (activeTab === "admin") {
+                            setActiveTab("all");
+                        }
+                        if (currentScreen === "admin") {
+                            currentScreen = "functions";
+                        }
+                    }
+                    setActiveTab(activeTab);
+                    updateProfilePanel();
+                    if (currentScreen === "result") {
+                        showScreen("result");
+                    } else if (currentScreen === "profile") {
+                        showScreen("profile");
+                    } else if (currentScreen === "admin") {
+                        showScreen("admin");
+                    } else if (currentScreen === "functions") {
+                        showScreen("functions");
+                    } else {
+                        showScreen("home");
+                    }
+                    if (isAdminSession) {
+                        await Promise.all([loadFilters(), loadSources()]);
+                    }
+                    await loadTargetTypes();
+                } else {
+                    isAdminSession = false;
+                    sessionUser = null;
+                    sessionBadge.textContent = "Сессия не подтверждена";
+                    mainSection.style.display = "none";
+                    adminSection.style.display = "none";
+                    tabsSection.style.display = "none";
+                    guestSection.style.display = "block";
+                    bottomNav.style.display = "none";
+                    navAdminBtn.style.display = "none";
+                    bottomNav.classList.remove("is-admin");
+                    adminTabBtn.style.display = "none";
+                    updateProfilePanel();
+                    showScreen("home");
+                }
+            } catch (err) {
+                sessionBadge.textContent = "Ошибка проверки сессии";
+                setStatus(err.message, true);
+                showScreen("home");
+            }
+        }
+
+        async function loadFilters() {
+            ensureAdmin();
+            const data = await api("/api/miniapp/admin/filters", { method: "GET" }, true);
+            filtersTable.innerHTML = "";
+            for (const item of data.items || []) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${item.id}</td><td>${item.keyword}</td><td>${item.created_at}</td>`;
+                filtersTable.appendChild(tr);
+            }
+        }
+
+        async function loadSources() {
+            ensureAdmin();
+            const data = await api("/api/miniapp/sources", { method: "GET" }, true);
+            sourcesTable.innerHTML = "";
+            for (const item of data.items || []) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${esc(item.id)}</td><td>${esc(item.name)}</td><td>${esc(item.value)}</td><td>${esc(item.username || item.user_id || "—")}</td><td>${esc(item.created_at || "—")}</td>`;
+                sourcesTable.appendChild(tr);
+            }
+        }
+
+        for (const btn of tabButtons) {
+            btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+        }
+
+        navHomeBtn.addEventListener("click", () => showScreen("home"));
+        navFunctionsBtn.addEventListener("click", () => showScreen("functions"));
+        navProfileBtn.addEventListener("click", () => showScreen("profile"));
+        navAdminBtn.addEventListener("click", () => showScreen("admin"));
+        document.getElementById("homeOpenFunctionsBtn").addEventListener("click", () => showScreen("functions"));
+        document.getElementById("homeOpenProfileBtn").addEventListener("click", () => showScreen("profile"));
+        document.getElementById("resultBackBtn").addEventListener("click", () => showScreen("functions"));
+        document.getElementById("resultHomeBtn").addEventListener("click", () => showScreen("home"));
+        document.getElementById("resultOpenBrowserBtn").addEventListener("click", () => openResultInBrowser());
+        document.getElementById("profileOpenFunctionsBtn").addEventListener("click", () => showScreen("functions"));
+        document.getElementById("profileMyIdBtn").addEventListener("click", () => {
+            renderResult("myid", { user: sessionUser || {} });
+            setStatus("Готово.");
+        });
+        document.getElementById("profileRefreshBtn").addEventListener("click", async () => {
+            setStatus("Обновляю сессию...");
+            await loadSession();
+            setStatus("Готово.");
+        });
+
+        document.getElementById("targetSearchBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                const searchType = document.getElementById("targetTypeSelect").value.trim();
+                const query = document.getElementById("targetQueryInput").value.trim();
+                if (!searchType || !query) throw new Error("Укажите функцию и запрос.");
+                setStatus("Поиск в целевой системе...");
+                const payload = await api(`/api/miniapp/itp/search/${encodeURIComponent(searchType)}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query }),
+                }, true);
+                renderResult("target", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("targetBalanceBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Проверяю баланс...");
+                const payload = await api("/api/miniapp/itp/balance", { method: "GET" }, true);
+                renderResult("target_balance", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("helpBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                renderResult("help", {});
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("myIdBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                renderResult("myid", { user: sessionUser || {} });
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+
+        document.getElementById("photoBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                const file = document.getElementById("photoInput").files[0];
+                if (!file) throw new Error("Выберите файл.");
+                setStatus("Анализ фото...");
+                const fd = new FormData();
+                fd.append("file", file);
+                fd.append("search_types", "metadata");
+                fd.append("search_types", "search_engines");
+                renderResult("photo", await api("/api/miniapp/photo_search", { method: "POST", body: fd }, true));
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("photoEnhanceBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                const file = document.getElementById("photoInput").files[0];
+                if (!file) throw new Error("Выберите файл.");
+                setStatus("Улучшаю фото...");
+                const fd = new FormData();
+                fd.append("file", file);
+                const payload = await api("/api/miniapp/photo_enhance", { method: "POST", body: fd }, true);
+                if (payload.download_url) {
+                    payload.download_url = withBase(payload.download_url);
+                }
+                renderResult("raw", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("messengerTelegramBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                await startMessengerActivation("telegram");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("messengerMaxBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                await startMessengerActivation("max");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("messengerWhatsappBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                await startMessengerActivation("whatsapp");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        resultEl.addEventListener("click", async (event) => {
+            const target = event.target instanceof Element ? event.target.closest("[data-sms-action]") : null;
+            if (!target) {
+                return;
+            }
+            const action = String(target.getAttribute("data-sms-action") || "").trim();
+            if (!action) {
+                return;
+            }
+            try {
+                ensureAdmin();
+                await smsActivationAction(action);
+            } catch (err) {
+                setStatus(err.message || "Ошибка действия SMS.", true);
+            }
+        });
+
+        document.getElementById("myChatsBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Проверяю номер в ваших чатах...");
+                const payload = {
+                    phone: document.getElementById("myChatsPhoneInput").value.trim(),
+                };
+                const result = await api("/api/miniapp/my_chats_phone", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                }, true);
+                renderResult("raw", result);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("groupBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Анализирую группу...");
+                const payload = {
+                    chat_ref: document.getElementById("groupRefInput").value.trim(),
+                    limit: parseInt(document.getElementById("groupLimitInput").value, 10) || 500,
+                };
+                renderResult("group", await api("/api/miniapp/admin/tg_group_stats", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                }, true));
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("filterAddBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                const keyword = document.getElementById("filterInput").value.trim();
+                setStatus("Добавляю фильтр...");
+                await api("/api/miniapp/admin/filters", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ keyword }),
+                }, true);
+                document.getElementById("filterInput").value = "";
+                await loadFilters();
+                setStatus("Фильтр добавлен.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("filterRemoveBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                const value = document.getElementById("filterRemoveInput").value.trim();
+                setStatus("Удаляю фильтр...");
+                const payload = await api("/api/miniapp/admin/filters/remove", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ value }),
+                }, true);
+                document.getElementById("filterRemoveInput").value = "";
+                await loadFilters();
+                renderResult("raw", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("filterReloadBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Обновляю таблицу...");
+                await loadFilters();
+                setStatus("Таблица обновлена.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("tgCatalogSearchBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Ищу в каталоге...");
+                const payload = await api("/api/miniapp/tg_catalog/search", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        query: document.getElementById("tgCatalogQueryInput").value.trim(),
+                        source_type: document.getElementById("tgCatalogSourceInput").value.trim() || "all",
+                        limit: 20,
+                        offset: 0,
+                    }),
+                }, true);
+                renderResult("catalog", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("tgCatalogTopBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Получаю Top...");
+                const sourceType = encodeURIComponent(document.getElementById("tgCatalogSourceInput").value.trim() || "all");
+                const payload = await api(`/api/miniapp/tg_catalog/top?source_type=${sourceType}&limit=20`, { method: "GET" }, true);
+                renderResult("catalog", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("tgCatalogRandomBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Получаю Random...");
+                const sourceType = encodeURIComponent(document.getElementById("tgCatalogSourceInput").value.trim() || "all");
+                const payload = await api(`/api/miniapp/tg_catalog/random?source_type=${sourceType}`, { method: "GET" }, true);
+                renderResult("catalog", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("tgCatalogStatsBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Получаю статистику каталога...");
+                renderResult("raw", await api("/api/miniapp/tg_catalog/stats", { method: "GET" }, true));
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("sourceAddBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Добавляю источник...");
+                await api("/api/miniapp/sources", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: document.getElementById("sourceNameInput").value.trim(),
+                        value: document.getElementById("sourceValueInput").value.trim(),
+                    }),
+                }, true);
+                document.getElementById("sourceNameInput").value = "";
+                document.getElementById("sourceValueInput").value = "";
+                await loadSources();
+                setStatus("Источник добавлен.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("sourceRemoveBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Удаляю источник...");
+                const id = parseInt(document.getElementById("sourceRemoveInput").value.trim(), 10);
+                const payload = await api("/api/miniapp/sources/remove", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id }),
+                }, true);
+                document.getElementById("sourceRemoveInput").value = "";
+                await loadSources();
+                renderResult("raw", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("sourceReloadBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Обновляю источники...");
+                await loadSources();
+                setStatus("Таблица источников обновлена.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        const readInt = (id) => parseInt(document.getElementById(id).value.trim(), 10) || 0;
+
+        document.getElementById("reportSubmitBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Отправляю отчёт 767...");
+                const payload = await api("/api/miniapp/report767/submit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        team: document.getElementById("reportTeamInput").value.trim(),
+                        author: document.getElementById("reportAuthorInput").value.trim(),
+                        reports_done: readInt("reportDoneInput"),
+                        reports_plan: readInt("reportPlanInput"),
+                        numbers_to_check: readInt("reportNumsInput"),
+                        positives: readInt("reportPosInput"),
+                        active: readInt("reportActiveInput"),
+                        vbros: readInt("reportVbrosInput"),
+                        predlog: readInt("reportPredlogInput"),
+                        soglasiy: readInt("reportSoglasiyInput"),
+                    }),
+                }, true);
+                renderResult("raw", payload);
+                setStatus("Отчёт 767 сохранён.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("reportStatsBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Загружаю статистику 767...");
+                const payload = await api("/api/miniapp/report767/stats", { method: "GET" }, true);
+                renderResult("report767stats", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("greenSubmitBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Создаю заказ источников...");
+                const payload = await api("/api/miniapp/green_order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        donor_link: document.getElementById("greenDonorInput").value.trim(),
+                        full_name: document.getElementById("greenFullNameInput").value.trim(),
+                        birth_date: document.getElementById("greenBirthInput").value.trim(),
+                        count: parseInt(document.getElementById("greenCountInput").value.trim(), 10) || 0,
+                        vk_source: document.getElementById("greenVkInput").value.trim(),
+                    }),
+                }, true);
+                renderResult("raw", payload);
+                setStatus("Заказ источников сохранён.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        document.getElementById("greenListBtn").addEventListener("click", async () => {
+            try {
+                ensureAdmin();
+                setStatus("Загружаю заказы...");
+                const payload = await api("/api/miniapp/green_orders?limit=100", { method: "GET" }, true);
+                renderResult("greenorders", payload);
+                setStatus("Готово.");
+            } catch (err) { setStatus(err.message, true); }
+        });
+
+        loadSession().finally(() => {
+            restoreSavedResultFromStorage();
+        });
+    </script>
+</body>
+</html>
