@@ -41,6 +41,8 @@ from xosint_toolkit import XOsintToolkit
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+INTELX_DEFAULT_API_URL = 'https://free.intelx.io'
+
 class UniversalSearchSystem:
     """Universal OSINT search system for phones and photos"""
     
@@ -49,6 +51,8 @@ class UniversalSearchSystem:
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         })
+        self.intelx_api_url = os.getenv('INTELX_API_URL', INTELX_DEFAULT_API_URL).strip().rstrip('/')
+        self.intelx_api_key = os.getenv('INTELX_API_KEY', '').strip()
         
         # File upload settings
         self.upload_folder = 'uploads'
@@ -108,7 +112,8 @@ class UniversalSearchSystem:
             'ipapi': self._ipapi_lookup,
             'twilio': self._twilio_lookup,
             'infobel': self._infobel_lookup,
-            'globalphone': self._globalphone_lookup
+            'globalphone': self._globalphone_lookup,
+            'intelx': self._intelx_phone_search
         }
         
         # Facial recognition services
@@ -379,6 +384,175 @@ class UniversalSearchSystem:
             'api_key_required': 'Get API key from https://globalphoneapi.com/',
             'features': ['Global coverage', 'Real-time data', 'Advanced filtering']
         }
+
+    def _intelx_headers(self) -> Dict[str, str]:
+        """Authentication headers for Intelligence X API."""
+        headers = {'Accept': 'application/json'}
+        if self.intelx_api_key:
+            headers['X-Key'] = self.intelx_api_key
+        return headers
+
+    def _intelx_request(self, method: str, path: str, params: Optional[Dict[str, Any]] = None) -> requests.Response:
+        """Perform an authenticated Intelligence X API request."""
+        url = f"{self.intelx_api_url}{path}"
+        return self.session.request(
+            method=method,
+            url=url,
+            params=params or {},
+            headers=self._intelx_headers(),
+            timeout=(10, 30),
+        )
+
+    def intelx_search(
+        self,
+        term: str,
+        *,
+        maxresults: int = 20,
+        timeout_seconds: int = 5,
+        media: int = 0,
+        datefrom: Optional[str] = None,
+        dateto: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Search a strong selector through Intelligence X."""
+        clean_term = (term or '').strip()
+        if not clean_term:
+            return {
+                'service': 'IntelX',
+                'success': False,
+                'configured': bool(self.intelx_api_key),
+                'error': 'Search term is required'
+            }
+
+        if not self.intelx_api_key:
+            return {
+                'service': 'IntelX',
+                'success': False,
+                'configured': False,
+                'error': 'INTELX_API_KEY is not configured'
+            }
+
+        start_params = {
+            'term': clean_term,
+            'maxresults': max(1, min(int(maxresults or 20), 100)),
+            'timeout': max(1, min(int(timeout_seconds or 5), 30)),
+            'datefrom': datefrom or '1970-01-01 00:00:00',
+            'dateto': dateto or time.strftime('%Y-%m-%d %H:%M:%S'),
+            'sort': 4,
+            'media': media,
+        }
+
+        search_id = None
+        try:
+            start_response = self._intelx_request('POST', '/intelligent/search', params=start_params)
+            if start_response.status_code == 401:
+                return {
+                    'service': 'IntelX',
+                    'success': False,
+                    'configured': True,
+                    'query': clean_term,
+                    'error': 'IntelX API rejected the API key'
+                }
+            if start_response.status_code == 402:
+                return {
+                    'service': 'IntelX',
+                    'success': False,
+                    'configured': True,
+                    'query': clean_term,
+                    'error': 'IntelX API credits exhausted'
+                }
+            start_response.raise_for_status()
+            start_payload = start_response.json()
+            search_id = (start_payload or {}).get('id')
+            if not search_id:
+                return {
+                    'service': 'IntelX',
+                    'success': False,
+                    'configured': True,
+                    'query': clean_term,
+                    'error': 'IntelX API did not return a search id',
+                    'response': start_payload,
+                }
+
+            records: List[Dict[str, Any]] = []
+            status = 3
+            for attempt in range(8):
+                if attempt:
+                    time.sleep(0.5)
+                result_response = self._intelx_request(
+                    'GET',
+                    '/intelligent/search/result',
+                    params={
+                        'id': search_id,
+                        'limit': start_params['maxresults'],
+                        'media': media,
+                    },
+                )
+                result_response.raise_for_status()
+                result_payload = result_response.json() or {}
+                status = int(result_payload.get('status', 4))
+                batch = result_payload.get('records') or []
+                if isinstance(batch, list):
+                    records.extend(batch)
+                if status in {1, 2, 4}:
+                    break
+
+            unique_records: List[Dict[str, Any]] = []
+            seen_system_ids = set()
+            for record in records:
+                system_id = record.get('systemid') or record.get('storageid') or uuid.uuid4().hex
+                if system_id in seen_system_ids:
+                    continue
+                seen_system_ids.add(system_id)
+                unique_records.append({
+                    'systemid': record.get('systemid'),
+                    'storageid': record.get('storageid'),
+                    'name': record.get('name'),
+                    'description': record.get('description'),
+                    'bucket': record.get('bucket'),
+                    'bucket_human': record.get('bucketh'),
+                    'media': record.get('media'),
+                    'media_human': record.get('mediah'),
+                    'date': record.get('date'),
+                    'added': record.get('added'),
+                    'xscore': record.get('xscore'),
+                    'tags': record.get('tagsh') or record.get('tags') or [],
+                })
+
+            return {
+                'service': 'IntelX',
+                'success': True,
+                'configured': True,
+                'query': clean_term,
+                'search_id': search_id,
+                'status': status,
+                'found': bool(unique_records),
+                'records_returned': len(unique_records),
+                'records': unique_records,
+                'api_url': self.intelx_api_url,
+            }
+        except requests.RequestException as exc:
+            logger.warning('IntelX request failed: %s', exc)
+            return {
+                'service': 'IntelX',
+                'success': False,
+                'configured': True,
+                'query': clean_term,
+                'search_id': search_id,
+                'error': str(exc),
+                'api_url': self.intelx_api_url,
+            }
+        finally:
+            if search_id:
+                try:
+                    self._intelx_request('GET', '/intelligent/search/terminate', params={'id': search_id})
+                except requests.RequestException:
+                    logger.debug('IntelX search termination skipped for %s', search_id)
+
+    def _intelx_phone_search(self, phone_number: str) -> Dict[str, Any]:
+        """Intelligence X search for phone numbers."""
+        result = self.intelx_search(phone_number)
+        result['selector_type'] = 'phone'
+        return result
     
     # Facial recognition services
     def _amazon_rekognition_analysis(self, image_path: str) -> Dict[str, Any]:
@@ -887,7 +1061,7 @@ def api_sources():
         'facial_services': list(universal_search.facial_services.keys()),
         'api_services': list(universal_search.api_services.keys()),
         'local_databases': ['data_breaches', 'business_directory'],
-        'osint_tools': ['phone_check', 'ip_lookup', 'email_check', 'xosint_phone', 'directory_search', 'directory_stats'],
+        'osint_tools': ['phone_check', 'ip_lookup', 'email_check', 'intelx_search', 'xosint_phone', 'directory_search', 'directory_stats'],
         'phone_search_types': ['basic', 'search_engines', 'social', 'api', 'data_breaches', 'xosint_phone', 'owner', 'all'],
         'allowed_extensions': list(universal_search.allowed_extensions)
     })
@@ -959,6 +1133,38 @@ def api_email_check():
     if not email:
         return jsonify({'error': 'Email is required'}), 400
     return jsonify(universal_search.xosint.email_check(email))
+
+
+@app.route('/api/intelx_search', methods=['GET'])
+def api_intelx_search():
+    """Direct Intelligence X search endpoint."""
+    term = (request.args.get('term') or request.args.get('phone') or '').strip()
+    if not term:
+        return jsonify({'error': 'term is required'}), 400
+
+    try:
+        maxresults = int(request.args.get('maxresults', '20'))
+    except ValueError:
+        return jsonify({'error': 'maxresults must be an integer'}), 400
+
+    try:
+        timeout_seconds = int(request.args.get('timeout', '5'))
+        media = int(request.args.get('media', '0'))
+    except ValueError:
+        return jsonify({'error': 'timeout and media must be integers'}), 400
+
+    payload = universal_search.intelx_search(
+        term,
+        maxresults=maxresults,
+        timeout_seconds=timeout_seconds,
+        media=media,
+        datefrom=(request.args.get('datefrom') or '').strip() or None,
+        dateto=(request.args.get('dateto') or '').strip() or None,
+    )
+    status_code = 200 if payload.get('success') else 502
+    if payload.get('configured') is False:
+        status_code = 503
+    return jsonify(payload), status_code
 
 
 @app.route('/api/directory/search', methods=['GET'])
