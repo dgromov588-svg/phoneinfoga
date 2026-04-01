@@ -11,7 +11,7 @@ services:
       REPO_URL: ${REPO_URL}
       REPO_BRANCH: ${REPO_BRANCH:-master}
       AUTO_UPDATE: ${AUTO_UPDATE:-true}
-      APP_CMD: ${APP_CMD:-python universal_search_system.py}
+      APP_CMD: ${APP_CMD:-python mini_app_server.py}
     ports:
       - "${APP_PORT:-5000}:5000"
     volumes:

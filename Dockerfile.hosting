@@ -18,7 +18,7 @@ WORKDIR /opt
 # - AUTO_UPDATE: optional, "true" (default) to git pull on each start
 ENV REPO_URL="" \
     REPO_BRANCH="master" \
-    APP_CMD="python universal_search_system.py" \
+    APP_CMD="python mini_app_server.py" \
     AUTO_UPDATE="true"
 
 EXPOSE 5000

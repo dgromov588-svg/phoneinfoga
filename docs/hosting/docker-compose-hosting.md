@@ -39,7 +39,7 @@ docker compose -f docker-compose.hosting.yml --env-file .env.hosting logs -f
 ### 1) HTTP API (по умолчанию)
 
 ```dotenv
-APP_CMD=python universal_search_system.py
+APP_CMD=python mini_app_server.py
 ```
 
 ### 2) Основной Telegram-бот

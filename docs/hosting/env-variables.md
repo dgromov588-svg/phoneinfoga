@@ -52,7 +52,7 @@ LOG_LEVEL=info
 
 1. Создайте новый проект и подключите репозиторий `phoneinfoga`.
 2. В разделе **Variables** добавьте перечисленные выше переменные (Railway сериализует их автоматически).
-3. Укажите команду запуска, например: `python telegram_bot.py` для бота или `gunicorn --bind 0.0.0.0:5000 universal_search_system:app` для веб-интерфейса.
+3. Укажите команду запуска, например: `python telegram_bot.py` для бота или `gunicorn --bind 0.0.0.0:5000 mini_app_server:app` для Mini App / веб-интерфейса.
 4. При необходимости подпишитесь на бесплатные API (Numverify, AbstractAPI, ipapi) и вставьте ключи.
 
 Railway также позволяет загрузить `.env` файл с помощью `railway variables import` или CLI.
@@ -70,13 +70,13 @@ services:
       - .env
     ports:
       - '5000:5000'
-    command: python universal_search_system.py
+    command: python mini_app_server.py
 ```
 
 2. Создайте `.env` (как выше) рядом с `docker-compose.yml`. Docker автоматически подставит переменные.
 3. Запустите `docker compose up --build`.
 
-Если вы деплоите только Telegram-бота, используйте команду `python telegram_bot.py`, а для API-фронта — `gunicorn --bind 0.0.0.0:5000 universal_search_system:app`.
+Если вы деплоите только Telegram-бота, используйте команду `python telegram_bot.py`, а для API-фронта / Mini App — `gunicorn --bind 0.0.0.0:5000 mini_app_server:app`.
 
 ## Общие рекомендации
 

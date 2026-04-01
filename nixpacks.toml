@@ -14,4 +14,4 @@ cmds = [
 ]
 
 [start]
-cmd = "python universal_search_system.py"
+cmd = "python mini_app_server.py"

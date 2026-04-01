@@ -1,1 +1,1 @@
-web: python universal_search_system.py
+web: python mini_app_server.py
