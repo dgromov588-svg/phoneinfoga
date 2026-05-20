@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 
 from dotenv import load_dotenv
 import requests
@@ -354,12 +354,29 @@ def _normalize_pdf_text(value: str, font_name: str) -> str:
     return value or ""
 
 
+def _normalize_reports_base_url(value: str) -> str:
+    base_url = (value or "").strip()
+    if not base_url:
+        return ""
+    if base_url.startswith("//"):
+        base_url = f"https:{base_url}"
+    elif "://" not in base_url:
+        base_url = f"https://{base_url.lstrip('/')}"
+
+    parsed = urlsplit(base_url)
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+
+    normalized_path = parsed.path.rstrip("/")
+    return urlunsplit((parsed.scheme, parsed.netloc, normalized_path, "", ""))
+
+
 def _build_pdf_report(title: str, html_body: str) -> Dict[str, str]:
     if not _REPORTLAB_AVAILABLE:
         return {"ok": "0", "error": "reportlab is not installed"}
 
     reports_dir = os.getenv("REPORTS_PUBLIC_DIR", "").strip()
-    reports_base_url = os.getenv("REPORTS_BASE_URL", "").strip().rstrip("/")
+    reports_base_url = _normalize_reports_base_url(os.getenv("REPORTS_BASE_URL", ""))
     if not reports_dir or not reports_base_url:
         return {"ok": "0", "error": "REPORTS_PUBLIC_DIR/REPORTS_BASE_URL not configured"}
 
@@ -370,7 +387,7 @@ def _build_pdf_report(title: str, html_body: str) -> Dict[str, str]:
 
     filename = f"report_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.pdf"
     report_path = os.path.join(reports_dir, filename)
-    report_url = f"{reports_base_url}/{filename}"
+    report_url = f"{reports_base_url}/{quote(filename)}"
 
     font_name = _get_report_font_name()
     plain_body = _strip_html_for_pdf(html_body)
@@ -424,11 +441,29 @@ async def _reply_with_pdf_report(
     report = _build_pdf_report(title=title, html_body=html_body)
     if report.get("ok") == "1":
         report_url = report.get("url", "")
-        await update.message.reply_text(
-            f"📄 <a href=\"{report_url}\">Скачать PDF-отчет</a>",
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
-        )
+        report_path = report.get("path", "")
+        if report_path and os.path.exists(report_path):
+            with open(report_path, "rb") as report_file:
+                await update.message.reply_document(
+                    document=report_file,
+                    filename=os.path.basename(report_path),
+                    caption="📄 PDF-отчет готов.",
+                    reply_markup=InlineKeyboardMarkup(
+                        [[InlineKeyboardButton("Открыть по ссылке", url=report_url)]]
+                    ) if report_url else None,
+                )
+        elif report_url:
+            await update.message.reply_text(
+                f"📄 <a href=\"{report_url}\">Скачать PDF-отчет</a>",
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Открыть по ссылке", url=report_url)]]
+                ),
+            )
+        else:
+            logger.warning("PDF report generated without accessible path/url: %s", report)
+            await update.message.reply_text("⚠️ PDF-отчет создан, но ссылка недоступна.")
     else:
         logger.warning("PDF report unavailable: %s", report.get("error", "unknown"))
         await update.message.reply_text("⚠️ PDF-отчет недоступен (временная ошибка).")
@@ -2633,7 +2668,7 @@ async def _run_bot_instance(token: str, allowed_chat_ids: Set[int], admin_chat_i
         logger.info("Telegram admin panel open mode (all chats). Set TELEGRAM_ADMIN_CHAT_IDS to restrict access.")
 
     reports_dir = os.getenv("REPORTS_PUBLIC_DIR", "").strip()
-    reports_url = os.getenv("REPORTS_BASE_URL", "").strip()
+    reports_url = _normalize_reports_base_url(os.getenv("REPORTS_BASE_URL", ""))
     if _REPORTLAB_AVAILABLE and reports_dir and reports_url:
         logger.info("PDF reports enabled: %s -> %s", reports_dir, reports_url)
     else:
